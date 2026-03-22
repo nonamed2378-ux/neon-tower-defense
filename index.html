@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>네온 타워디펜스 - 멀티플레이어</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -256,13 +257,18 @@ button:disabled:hover { background: #1a1a4e; box-shadow: none; }
     gap: 0;
     margin-top: 10px;
     align-items: flex-start;
-    flex-wrap: wrap;
+    justify-content: center;
+    flex-wrap: nowrap;
+}
+#gameCanvas {
+    flex-shrink: 0;
 }
 #recipePanel {
-    width: 240px;
+    width: 220px;
     flex-shrink: 0;
     background: #0a0a2e;
     border: 2px solid #ff00ff;
+    border-left: none;
     box-shadow: 0 0 15px rgba(255,0,255,0.2), inset 0 0 30px rgba(255,0,255,0.03);
     padding: 10px;
     font-size: 12px;
@@ -273,6 +279,7 @@ button:disabled:hover { background: #1a1a4e; box-shadow: none; }
     overflow-x: visible;
     scrollbar-width: thin;
     scrollbar-color: #ff00ff44 #0a0a2e;
+    position: relative;
 }
 #recipePanel::-webkit-scrollbar { width: 5px; }
 #recipePanel::-webkit-scrollbar-track { background: #0a0a2e; }
@@ -450,6 +457,87 @@ button:disabled:hover { background: #1a1a4e; box-shadow: none; }
 }
 #bgmBtn:hover { color: #fff; border-color: #aaa; }
 #bgmBtn.active { color: #00ff88; border-color: #00ff88; }
+
+/* Help button */
+#helpBtn {
+    background: none;
+    border: 1px solid #555;
+    color: #888;
+    padding: 4px 10px;
+    font-size: 16px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    min-width: 40px;
+}
+#helpBtn:hover { color: #fff; border-color: #aaa; }
+
+/* Help Popup */
+#helpPopup {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 100000;
+    justify-content: center;
+    align-items: center;
+}
+#helpPopup.show {
+    display: flex;
+}
+#helpPopup .help-box {
+    background: #0a0a2e;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 40px rgba(0,255,255,0.3), 0 0 80px rgba(255,0,255,0.15);
+    padding: 24px 30px;
+    border-radius: 8px;
+    max-width: 520px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: #ccc;
+    font-size: 13px;
+    line-height: 1.8;
+    scrollbar-width: thin;
+    scrollbar-color: #00ffff44 #0a0a2e;
+}
+#helpPopup .help-box::-webkit-scrollbar { width: 5px; }
+#helpPopup .help-box::-webkit-scrollbar-track { background: #0a0a2e; }
+#helpPopup .help-box::-webkit-scrollbar-thumb { background: #00ffff44; border-radius: 3px; }
+#helpPopup .help-box h2 {
+    color: #00ffff;
+    text-shadow: 0 0 15px rgba(0,255,255,0.5);
+    font-size: 18px;
+    text-align: center;
+    margin: 0 0 16px 0;
+    border-bottom: 1px solid #00ffff44;
+    padding-bottom: 10px;
+}
+#helpPopup .help-box h3 {
+    color: #ff00ff;
+    text-shadow: 0 0 10px rgba(255,0,255,0.4);
+    font-size: 14px;
+    margin: 14px 0 6px 0;
+}
+#helpPopup .help-box p {
+    margin: 4px 0;
+    font-size: 12px;
+}
+#helpPopup .help-close-btn {
+    display: block;
+    margin: 18px auto 0;
+    background: #1a1a4e;
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    padding: 8px 30px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+#helpPopup .help-close-btn:hover {
+    background: #2a2a6e;
+    box-shadow: 0 0 15px rgba(0,255,255,0.3);
+}
 
 /* === Stage Select Overlay === */
 #stageSelect {
@@ -669,6 +757,147 @@ button:disabled:hover { background: #1a1a4e; box-shadow: none; }
     border-color: #ffdd00;
     border-style: solid;
 }
+
+/* === Mobile / Touch Support === */
+#gameCanvas { touch-action: none; }
+body { overscroll-behavior: none; }
+
+/* Orientation overlay */
+#orientationOverlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #050510ee;
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    color: #00ffff;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    text-align: center;
+    padding: 20px;
+}
+#orientationOverlay .orient-icon {
+    font-size: 64px;
+    margin-bottom: 20px;
+    animation: orientRotate 2s ease-in-out infinite;
+}
+@keyframes orientRotate {
+    0%,100% { transform: rotate(0deg); }
+    50% { transform: rotate(90deg); }
+}
+#orientationOverlay .orient-text {
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+/* Recipe panel toggle button for mobile */
+#recipePanelToggle {
+    display: none;
+    background: #1a1a4e;
+    color: #ff00ff;
+    border: 2px solid #ff00ff;
+    padding: 8px 16px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    margin-top: 6px;
+    width: 100%;
+    max-width: 1000px;
+    text-align: center;
+}
+#recipePanelToggle:hover { background: #2a2a6e; }
+
+/* Mobile: recipe panel below canvas */
+@media (max-width: 1300px) {
+    #gameRow {
+        flex-direction: column;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    #recipePanel {
+        width: 100%;
+        max-width: 1000px;
+        height: auto;
+        max-height: 180px;
+        overflow-y: auto;
+        overflow-x: auto;
+        border-left: 2px solid #ff00ff;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    #recipePanel h3 {
+        width: 100%;
+    }
+    #recipePanelToggle { display: block; }
+    #recipePanel.collapsed { display: none; }
+    .recipe-tooltip, .synergy-tooltip {
+        right: auto;
+        left: 0;
+        top: auto;
+        bottom: calc(100% + 8px);
+        transform: none;
+    }
+}
+
+/* Mobile landscape - compact everything */
+@media (max-height: 700px) and (orientation: landscape) {
+    body { overflow: auto; }
+    #ui { gap: 8px; flex-wrap: wrap; justify-content: center; }
+    #ui button, #ui .lobby-btn { padding: 6px 12px; font-size: 11px; min-height: 44px; min-width: 44px; }
+    #summonBtn { font-size: 11px; padding: 6px 10px; min-height: 44px; }
+    #startWaveBtn { font-size: 11px; padding: 6px 10px; min-height: 44px; }
+    #info { font-size: 10px; }
+    #synergyBar { font-size: 11px; }
+    #recipePanel {
+        font-size: 10px;
+    }
+    #recipePanel h3 { font-size: 11px; }
+    .recipe-card { padding: 4px 6px; margin-bottom: 3px; }
+}
+
+/* Small screens - full width */
+@media (max-width: 768px) {
+    #lobbyBox {
+        width: 95vw;
+        padding: 20px;
+    }
+    .lobby-title { font-size: 20px; }
+    .lobby-subtitle { font-size: 11px; }
+    .lobby-input { font-size: 14px; padding: 8px 12px; }
+    .lobby-btn { padding: 10px 16px; font-size: 13px; min-height: 44px; }
+    .lobby-btn.start { font-size: 14px; padding: 10px 20px; }
+    #stageSelectBox {
+        width: 95vw;
+        padding: 16px;
+    }
+    .stage-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+    }
+    .stage-card { padding: 10px 6px; }
+    .stage-card .stage-num { font-size: 18px; }
+    #relicShopBox {
+        width: 95vw;
+        padding: 16px;
+    }
+    .relic-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    .relic-card { padding: 10px 8px; }
+    .relic-icon { font-size: 24px; }
+    .relic-name { font-size: 12px; }
+    .relic-slot { width: 50px; height: 50px; font-size: 24px; }
+    #ratingBox {
+        padding: 24px 20px;
+        min-width: auto;
+        width: 90vw;
+    }
+    .rating-letter { font-size: 64px; }
+    .rating-btns { flex-direction: column; gap: 8px; }
+}
 </style>
 </head>
 <body>
@@ -775,6 +1004,7 @@ button:disabled:hover { background: #1a1a4e; box-shadow: none; }
 <div id="gameArea" style="display:none">
 <div id="gameRow">
 <canvas id="gameCanvas" width="1000" height="620"></canvas>
+<button id="recipePanelToggle" onclick="toggleRecipePanel()">&#x2726; 조합/시너지 패널 ▼</button>
 <div id="recipePanel">
     <h3>&#x2726; 히든 조합 &#x2726;</h3>
     <div id="recipeCards"></div>
@@ -791,10 +1021,48 @@ button:disabled:hover { background: #1a1a4e; box-shadow: none; }
     </span>
     <span id="info">타워 드래그: 빈 칸 → 이동 · 같은 타워 → 합성</span>
     <button id="bgmBtn" onclick="toggleBGM()" title="BGM 켜기/끄기">🔇</button>
+    <button id="helpBtn" onclick="openHelp()" title="도움말">❓</button>
 </div>
 <div id="synergyBar"></div>
 </div>
+<!-- Orientation overlay for portrait mode -->
+<div id="orientationOverlay">
+    <div class="orient-icon">📱</div>
+    <div class="orient-text">가로로 회전해주세요<br><br>Please rotate to landscape</div>
+</div>
+
 <div id="toast" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#ff004488;color:#fff;padding:12px 24px;border-radius:8px;font-size:16px;pointer-events:none;opacity:0;transition:opacity 0.3s;z-index:100;"></div>
+
+<div id="helpPopup">
+    <div class="help-box">
+        <h2>게임 도움말</h2>
+        <div class="help-content">
+            <h3>기본 조작</h3>
+            <p>🎲 <b>소환</b>: Space키 또는 소환 버튼 클릭 → 랜덤 타워 배치</p>
+            <p>👆 <b>선택</b>: 타워 클릭 → 정보 확인</p>
+            <p>↔ <b>이동</b>: 타워를 빈 칸으로 드래그</p>
+            <p>🔄 <b>교환</b>: 다른 종류 타워 위로 드래그 → 위치 교환</p>
+
+            <h3>합성 시스템</h3>
+            <p>⬆ <b>합성</b>: 같은 종류+등급 타워 드래그 → 등급 UP (1★→2★→3★)</p>
+            <p>◆ <b>히든 조합</b>: 3★ 타워 2개를 드래그하거나 조합 버튼 클릭</p>
+
+            <h3>업그레이드</h3>
+            <p>⬆ <b>레벨업</b>: 타워 더블클릭 → 에너지로 업그레이드 (Lv.1~4)</p>
+            <p>💰 <b>판매</b>: 타워 선택 후 판매 버튼 → 에너지 환급</p>
+
+            <h3>전투</h3>
+            <p>⏱ 60초마다 다음 페이즈 → 더 강한 적 등장</p>
+            <p>⚠ 적 100마리 초과 시 5초마다 HP -1</p>
+            <p>👑 마지막 웨이브에 보스 등장 → 처치하면 스테이지 클리어</p>
+
+            <h3>유물</h3>
+            <p>🏆 스테이지 클리어 → 등급별 골드 보상 (S/A/B/C)</p>
+            <p>💎 골드로 유물 구매 → 3개 장착 → 영구 버프</p>
+        </div>
+        <button class="help-close-btn" onclick="closeHelp()">닫기</button>
+    </div>
+</div>
 
 <script>
 // ================================================================
@@ -2594,8 +2862,9 @@ function advanceToNextWavePhase() {
     enemiesToSpawn = getWaveComp(wave);
     spawnTimer = 0;
     let waveReward = 20 + wave * 5;
-    sp += waveReward;
-    showToast('웨이브 ' + wave + ' 시작! +' + waveReward + ' 에너지', 1500);
+    let phaseBonus = 20 + wavePhaseIndex * 10; // 20, 30, 40, 50...
+    sp += waveReward + phaseBonus;
+    showToast('다음 페이즈! 웨이브 ' + wave + ' +' + (waveReward + phaseBonus) + ' 에너지', 1500);
 }
 
 function getWavePhaseEnemyType() {
@@ -3013,27 +3282,152 @@ function update(dt) {
 }
 
 // ── Draw ──
+function seededRandom(x, y) {
+    let n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return n - Math.floor(n);
+}
+
+function drawCyberpunkBackground() {
+    // 1. Dark gradient sky
+    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    skyGrad.addColorStop(0, '#030010');
+    skyGrad.addColorStop(0.3, '#0a0020');
+    skyGrad.addColorStop(1, '#0d0030');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 2. City skyline (pixel buildings)
+    drawPixelBuildings();
+
+    // 3. Animated neon signs
+    drawNeonSigns();
+
+    // 4. Scan lines
+    drawScanLines();
+
+    // 5. Grid floor with perspective
+    drawGridFloor();
+
+    // 6. Lane neon strips
+    drawLaneNeonStrips();
+}
+
+function drawPixelBuildings() {
+    let buildings = [
+        {x:0, w:40, h:120}, {x:45, w:30, h:80}, {x:80, w:50, h:150},
+        {x:135, w:25, h:60}, {x:165, w:35, h:110}, {x:205, w:20, h:70},
+        {x:230, w:45, h:130}, {x:280, w:30, h:90}, {x:315, w:55, h:160},
+        {x:375, w:25, h:55}, {x:405, w:40, h:100}, {x:450, w:30, h:140},
+        {x:485, w:50, h:75}, {x:540, w:35, h:125},
+        {x:850, w:30, h:95}, {x:885, w:45, h:130}, {x:935, w:35, h:100},
+        {x:975, w:25, h:150}
+    ];
+    let winColors = ['#ffff00', '#00ffff', '#ff00ff', '#ff8800'];
+    for (let b of buildings) {
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(b.x, canvas.height - b.h, b.w, b.h);
+        // Windows using seeded random (no flicker)
+        for (let wy = canvas.height - b.h + 8; wy < canvas.height - 5; wy += 12) {
+            for (let wx = b.x + 4; wx < b.x + b.w - 4; wx += 8) {
+                if (seededRandom(wx, wy) > 0.4) {
+                    let ci = Math.floor(seededRandom(wx + 1, wy + 1) * winColors.length);
+                    ctx.fillStyle = winColors[ci] + '44';
+                    ctx.fillRect(wx, wy, 4, 6);
+                }
+            }
+        }
+    }
+}
+
+function drawNeonSigns() {
+    let t = Date.now() / 1000;
+    let signs = [
+        {x:20, y:80, text:'NEON', color:'#ff00ff'},
+        {x:920, y:100, text:'TD', color:'#00ffff'},
+        {x:50, y:200, text:'\u26A1', color:'#ffff00'},
+        {x:940, y:250, text:'\u2605', color:'#ff8800'},
+        {x:960, y:180, text:'GG', color:'#00ff88'},
+        {x:30, y:140, text:'PIXEL', color:'#ff4444'},
+    ];
+    for (let s of signs) {
+        let flicker = 0.5 + Math.sin(t * 3 + s.x) * 0.3;
+        ctx.globalAlpha = flicker;
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = s.color;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = s.color;
+        ctx.fillText(s.text, s.x, s.y);
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+function drawScanLines() {
+    ctx.fillStyle = 'rgba(0,0,0,0.08)';
+    for (let y = 0; y < canvas.height; y += 3) {
+        ctx.fillRect(0, y, canvas.width, 1);
+    }
+}
+
+function drawGridFloor() {
+    let gridArea = {
+        x: GRID_X - 20, y: GRID_Y - 10,
+        w: COLS * CELL_W + 40, h: ROWS * CELL_H + 20
+    };
+    ctx.strokeStyle = '#1a0a4a';
+    ctx.lineWidth = 0.5;
+    for (let x = gridArea.x; x <= gridArea.x + gridArea.w; x += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x, gridArea.y);
+        ctx.lineTo(x, gridArea.y + gridArea.h);
+        ctx.stroke();
+    }
+    for (let y = gridArea.y; y <= gridArea.y + gridArea.h; y += 20) {
+        ctx.beginPath();
+        ctx.moveTo(gridArea.x, y);
+        ctx.lineTo(gridArea.x + gridArea.w, y);
+        ctx.stroke();
+    }
+}
+
+function drawLaneNeonStrips() {
+    let laneY = GRID_Y + LANE_ROW * CELL_H;
+    let t = Date.now() / 500;
+
+    // Top strip
+    ctx.strokeStyle = '#ff00ff66';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(GRID_X, laneY);
+    ctx.lineTo(GRID_X + COLS * CELL_W, laneY);
+    ctx.stroke();
+
+    // Bottom strip
+    ctx.beginPath();
+    ctx.moveTo(GRID_X, laneY + CELL_H);
+    ctx.lineTo(GRID_X + COLS * CELL_W, laneY + CELL_H);
+    ctx.stroke();
+
+    // Moving light dots
+    let dotX = GRID_X + ((t * 100) % (COLS * CELL_W));
+    ctx.fillStyle = '#ff00ff';
+    ctx.shadowColor = '#ff00ff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(dotX, laneY, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(dotX, laneY + CELL_H, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+}
+
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Background with gradient
-    let bgGrd = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    bgGrd.addColorStop(0, '#050518');
-    bgGrd.addColorStop(0.5, '#0a0a2e');
-    bgGrd.addColorStop(1, '#0d0820');
-    ctx.fillStyle = bgGrd;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Background stars
-    ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < 40; i++) {
-        let sx = ((i * 137 + 50) % canvas.width);
-        let sy = ((i * 97 + 30) % canvas.height);
-        let twinkle = 0.2 + Math.sin(Date.now() / 1000 + i * 0.7) * 0.15;
-        ctx.globalAlpha = twinkle;
-        ctx.fillRect(sx, sy, 1.5, 1.5);
-    }
-    ctx.globalAlpha = 1.0;
+    // Cyberpunk background
+    drawCyberpunkBackground();
 
     // Grid background panel
     ctx.fillStyle = '#08082288';
@@ -4044,12 +4438,23 @@ function draw() {
     }
 }
 
-// ── Input ──
+// ── Scale-aware coordinate conversion ──
+function getCanvasCoords(clientX, clientY) {
+    let rect = canvas.getBoundingClientRect();
+    let scaleX = canvas.width / rect.width;
+    let scaleY = canvas.height / rect.height;
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+// ── Input (mouse) ──
 canvas.addEventListener('dblclick', function(e) {
     if (gameOver) return;
     if (upgradePopup) return;
-    let rect = canvas.getBoundingClientRect();
-    let mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let c = getCanvasCoords(e.clientX, e.clientY);
+    let mx = c.x, my = c.y;
     let g = worldToGrid(mx, my);
     if (!g || g.y === LANE_ROW || !grid[g.x][g.y]) return;
     showUpgradePopup(g.x, g.y);
@@ -4057,8 +4462,8 @@ canvas.addEventListener('dblclick', function(e) {
 
 canvas.addEventListener('mousedown', function(e) {
     if (gameOver) return;
-    let rect = canvas.getBoundingClientRect();
-    let mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let c = getCanvasCoords(e.clientX, e.clientY);
+    let mx = c.x, my = c.y;
 
     // Upgrade popup click handling
     if (upgradePopup) {
@@ -4113,15 +4518,15 @@ canvas.addEventListener('mousedown', function(e) {
 });
 
 canvas.addEventListener('mousemove', function(e) {
-    let rect = canvas.getBoundingClientRect();
-    mouseX = e.clientX - rect.left;
-    mouseY = e.clientY - rect.top;
+    let c = getCanvasCoords(e.clientX, e.clientY);
+    mouseX = c.x;
+    mouseY = c.y;
 });
 
 canvas.addEventListener('mouseup', function(e) {
     if (!dragFrom) return;
-    let rect = canvas.getBoundingClientRect();
-    let mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let c = getCanvasCoords(e.clientX, e.clientY);
+    let mx = c.x, my = c.y;
     let g = worldToGrid(mx, my);
     if (g && !(g.x === dragFrom.x && g.y === dragFrom.y) && g.y !== LANE_ROW) {
         if (grid[g.x] && grid[g.x][g.y]) {
@@ -4152,6 +4557,131 @@ canvas.addEventListener('mouseup', function(e) {
     }
     dragFrom = null;
 });
+
+// ── Touch Input (mobile support) ──
+let _lastTapTime = 0;
+let _lastTapPos = null;
+let _touchDragFrom = null;
+
+canvas.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    if (gameOver) return;
+    let touch = e.touches[0];
+    let c = getCanvasCoords(touch.clientX, touch.clientY);
+    let mx = c.x, my = c.y;
+
+    // Double-tap detection for upgrade popup
+    let now = Date.now();
+    if (_lastTapPos && now - _lastTapTime < 300) {
+        let dx = mx - _lastTapPos.x, dy = my - _lastTapPos.y;
+        if (dx * dx + dy * dy < 900) { // within ~30px
+            // Double tap -> show upgrade popup
+            if (!upgradePopup) {
+                let g = worldToGrid(mx, my);
+                if (g && g.y !== LANE_ROW && grid[g.x] && grid[g.x][g.y]) {
+                    showUpgradePopup(g.x, g.y);
+                }
+            }
+            _lastTapTime = 0;
+            _lastTapPos = null;
+            return;
+        }
+    }
+    _lastTapTime = now;
+    _lastTapPos = { x: mx, y: my };
+
+    // Upgrade popup click handling (same as mousedown)
+    if (upgradePopup) {
+        if (window._upgradeBtnBounds) {
+            let ub = window._upgradeBtnBounds;
+            if (mx >= ub.x && mx <= ub.x + ub.w && my >= ub.y && my <= ub.y + ub.h) {
+                if (isMultiplayer && !isHost) {
+                    sendInput({ type: 'upgrade', pos: {x: ub.gx, y: ub.gy} });
+                } else {
+                    upgradeTower(ub.gx, ub.gy, 'P1');
+                }
+                return;
+            }
+        }
+        if (window._upgradeCloseBtnBounds) {
+            let cb = window._upgradeCloseBtnBounds;
+            if (mx >= cb.x && mx <= cb.x + cb.w && my >= cb.y && my <= cb.y + cb.h) {
+                closeUpgradePopup();
+                return;
+            }
+        }
+        closeUpgradePopup();
+        return;
+    }
+
+    // Sell button check
+    if (window._sellBtnBounds) {
+        let sb = window._sellBtnBounds;
+        if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
+            if (isMultiplayer && !isHost) {
+                sendInput({ type: 'sell', pos: {x: sb.gx, y: sb.gy} });
+            } else {
+                sellTower(sb.gx, sb.gy, 'P1');
+            }
+            window._sellBtnBounds = null;
+            return;
+        }
+    }
+
+    let g = worldToGrid(mx, my);
+    if (!g || g.y === LANE_ROW) { selectedCell = null; _touchDragFrom = null; return; }
+    if (grid[g.x][g.y]) {
+        selectedCell = g;
+        _touchDragFrom = g;
+        dragFrom = g;
+    } else {
+        selectedCell = null;
+        _touchDragFrom = null;
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', function(e) {
+    e.preventDefault();
+    let touch = e.touches[0];
+    let c = getCanvasCoords(touch.clientX, touch.clientY);
+    mouseX = c.x;
+    mouseY = c.y;
+}, { passive: false });
+
+canvas.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    if (!_touchDragFrom && !dragFrom) return;
+    let from = _touchDragFrom || dragFrom;
+    // Use last known mouseX/mouseY (updated by touchmove)
+    let mx = mouseX, my = mouseY;
+    let g = worldToGrid(mx, my);
+    if (g && !(g.x === from.x && g.y === from.y) && g.y !== LANE_ROW) {
+        if (grid[g.x] && grid[g.x][g.y]) {
+            let a = grid[from.x][from.y];
+            let b = grid[g.x][g.y];
+            if (isMultiplayer && !isHost) {
+                sendInput({ type: 'mergeOrSwap', from: {x: from.x, y: from.y}, to: {x: g.x, y: g.y} });
+                selectedCell = g;
+            } else {
+                if (doMergeForPlayer(from.x, from.y, g.x, g.y, 'P1')) {
+                    selectedCell = g;
+                } else if (a && b) {
+                    swapTowers(from.x, from.y, g.x, g.y, 'P1');
+                    selectedCell = g;
+                }
+            }
+        } else if (!grid[g.x][g.y]) {
+            if (isMultiplayer && !isHost) {
+                sendInput({ type: 'move', from: {x: from.x, y: from.y}, to: {x: g.x, y: g.y} });
+            } else {
+                moveTower(from.x, from.y, g.x, g.y, 'P1');
+            }
+            selectedCell = g;
+        }
+    }
+    _touchDragFrom = null;
+    dragFrom = null;
+}, { passive: false });
 
 document.addEventListener('keydown', function(e) {
     // Only handle keys if game area is visible
@@ -4602,16 +5132,18 @@ function initBGM_restart() {
     scheduleLoop();
 }
 
-// Auto-start BGM when game begins (not in lobby)
+// Auto-start BGM when game begins (not in lobby) + trigger resize
 let _origStartMulti = startMultiplayerGame;
 startMultiplayerGame = function() {
     _origStartMulti();
     if (!bgmStarted) initBGM();
+    setTimeout(resizeCanvas, 50);
 };
 let _origStartSolo = startSoloGame;
 startSoloGame = function() {
     _origStartSolo();
     if (!bgmStarted) initBGM();
+    setTimeout(resizeCanvas, 50);
 };
 
 // 이벤트 위임: 조합 버튼 클릭 (data-recipe 속성 사용)
@@ -4625,6 +5157,97 @@ document.addEventListener('click', function(e) {
         onComboClick(idx);
     }
 });
+
+// ── Mobile: Canvas Resize & Orientation ──
+function resizeCanvas() {
+    let gameArea = document.getElementById('gameArea');
+    if (!gameArea || gameArea.style.display === 'none') return;
+
+    let maxW = window.innerWidth;
+    let maxH = window.innerHeight;
+
+    // Account for UI bar height
+    let uiHeight = 60;
+    let availH = maxH - uiHeight;
+
+    // On narrow screens, recipe panel goes below, so only scale for canvas width
+    let panelW = 0;
+    if (maxW > 1300) {
+        panelW = 240; // recipe panel beside canvas
+    }
+
+    let scaleX = maxW / (1000 + panelW);
+    let scaleY = availH / 620;
+    let scale = Math.min(scaleX, scaleY, 1); // never scale up
+
+    canvas.style.transform = 'scale(' + scale + ')';
+    canvas.style.transformOrigin = 'top left';
+
+    // Set the wrapper to the scaled size so layout flows correctly
+    let scaledW = Math.floor(1000 * scale);
+    let scaledH = Math.floor(620 * scale);
+    canvas.style.width = 1000 + 'px';
+    canvas.style.height = 620 + 'px';
+    // Use a wrapper approach: set margin-bottom to compensate for transform
+    canvas.style.marginBottom = (scaledH - 620) + 'px';
+    canvas.style.marginRight = (scaledW - 1000) + 'px';
+}
+
+function checkOrientation() {
+    let overlay = document.getElementById('orientationOverlay');
+    if (!overlay) return;
+    if (window.innerHeight > window.innerWidth && window.innerWidth < 768) {
+        overlay.style.display = 'flex';
+    } else {
+        overlay.style.display = 'none';
+    }
+}
+
+function toggleRecipePanel() {
+    let panel = document.getElementById('recipePanel');
+    let btn = document.getElementById('recipePanelToggle');
+    if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        btn.innerHTML = '&#x2726; 조합/시너지 패널 &#x25B2;';
+    } else {
+        panel.classList.add('collapsed');
+        btn.innerHTML = '&#x2726; 조합/시너지 패널 &#x25BC;';
+    }
+}
+
+function openHelp() {
+    document.getElementById('helpPopup').classList.add('show');
+}
+function closeHelp() {
+    document.getElementById('helpPopup').classList.remove('show');
+}
+// Close help popup on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('helpPopup').classList.contains('show')) {
+        closeHelp();
+    }
+});
+
+window.addEventListener('resize', function() {
+    resizeCanvas();
+    checkOrientation();
+});
+window.addEventListener('orientationchange', function() {
+    setTimeout(function() {
+        resizeCanvas();
+        checkOrientation();
+    }, 100);
+});
+
+// Initial checks
+checkOrientation();
+
+// Patch startSoloGame / startStage to trigger resize after game area is shown
+let _patchedStartStage = startStage;
+startStage = function(stageId) {
+    _patchedStartStage(stageId);
+    setTimeout(resizeCanvas, 50);
+};
 
 // ── Start: show lobby + start game loop ──
 // Load saved nickname
