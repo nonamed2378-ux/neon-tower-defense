@@ -1,0 +1,4641 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>네온 타워디펜스 - 멀티플레이어</title>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+@font-face {
+    font-family: 'DungGeunMo';
+    src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_six@1.2/DungGeunMo.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: #050510;
+    color: #00ffff;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+}
+#gameCanvas {
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 20px rgba(0,255,255,0.3);
+    margin-top: 10px;
+}
+#ui {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+    align-items: center;
+}
+button {
+    background: #1a1a4e;
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    padding: 10px 24px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+}
+button:hover { background: #2a2a6e; box-shadow: 0 0 10px rgba(0,255,255,0.5); }
+button:disabled { opacity: 0.4; cursor: default; }
+button:disabled:hover { background: #1a1a4e; box-shadow: none; }
+#info { color: #888; font-size: 12px; margin-top: 8px; }
+#synergyBar { color: #ffff00; font-size: 13px; margin-top: 4px; min-height: 18px; }
+
+/* === Lobby Overlay === */
+#lobby {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #050510;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+#lobbyBox {
+    background: #0a0a2e;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 40px rgba(0,255,255,0.2), inset 0 0 60px rgba(0,255,255,0.03);
+    padding: 40px;
+    width: 480px;
+    text-align: center;
+    position: relative;
+}
+#lobbyBox::before, #lobbyBox::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: #00ffff66;
+    border-style: solid;
+}
+#lobbyBox::before {
+    top: -1px; left: -1px;
+    border-width: 2px 0 0 2px;
+}
+#lobbyBox::after {
+    bottom: -1px; right: -1px;
+    border-width: 0 2px 2px 0;
+}
+.lobby-title {
+    font-size: 32px;
+    font-weight: bold;
+    color: #00ffff;
+    text-shadow: 0 0 20px rgba(0,255,255,0.5);
+    margin-bottom: 8px;
+}
+.lobby-subtitle {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 24px;
+}
+.lobby-input {
+    background: #0d0d35;
+    border: 1px solid #00ffff55;
+    color: #00ffff;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 16px;
+    padding: 10px 16px;
+    width: 100%;
+    text-align: center;
+    margin-bottom: 16px;
+    outline: none;
+}
+.lobby-input:focus {
+    border-color: #00ffff;
+    box-shadow: 0 0 10px rgba(0,255,255,0.3);
+}
+.lobby-input::placeholder { color: #335; }
+.lobby-btn {
+    background: #1a1a4e;
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    padding: 12px 28px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    margin: 6px;
+    transition: all 0.2s;
+}
+.lobby-btn:hover {
+    background: #2a2a6e;
+    box-shadow: 0 0 15px rgba(0,255,255,0.4);
+}
+.lobby-btn.primary {
+    background: #002244;
+    border-color: #00aaff;
+    color: #00ccff;
+}
+.lobby-btn.primary:hover {
+    background: #003366;
+    box-shadow: 0 0 15px rgba(0,170,255,0.5);
+}
+.lobby-btn.solo {
+    border-color: #ff00ff66;
+    color: #ff88ff;
+    font-size: 14px;
+    padding: 8px 20px;
+}
+.lobby-btn.solo:hover {
+    background: #2a1a4e;
+    box-shadow: 0 0 10px rgba(255,0,255,0.3);
+}
+.lobby-btn.start {
+    border-color: #00ff00;
+    color: #00ff00;
+    font-size: 18px;
+    padding: 14px 36px;
+    animation: startPulse 1.5s ease-in-out infinite;
+}
+@keyframes startPulse {
+    0%,100% { box-shadow: 0 0 5px rgba(0,255,0,0.3); }
+    50% { box-shadow: 0 0 25px rgba(0,255,0,0.6); }
+}
+.lobby-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+    animation: none;
+}
+.lobby-btn:disabled:hover {
+    background: #1a1a4e;
+    box-shadow: none;
+}
+.lobby-divider {
+    border: none;
+    border-top: 1px solid #1a1a5e;
+    margin: 20px 0;
+}
+.lobby-section {
+    margin: 16px 0;
+}
+.lobby-status {
+    color: #888;
+    font-size: 13px;
+    margin: 10px 0;
+    min-height: 20px;
+}
+.lobby-status.error { color: #ff4444; }
+.lobby-status.success { color: #00ff88; }
+.lobby-roomcode {
+    font-size: 36px;
+    font-weight: bold;
+    color: #ffff00;
+    text-shadow: 0 0 15px rgba(255,255,0,0.5);
+    letter-spacing: 8px;
+    margin: 12px 0;
+    user-select: all;
+}
+.lobby-players {
+    margin: 16px 0;
+    text-align: left;
+}
+.lobby-player {
+    background: #0d0d3599;
+    border: 1px solid #1a1a5e;
+    padding: 10px 16px;
+    margin: 6px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+}
+.lobby-player .name { color: #00ffff; }
+.lobby-player .badge { color: #888; font-size: 11px; margin-left: 6px; }
+.lobby-player .ready { color: #00ff88; font-size: 12px; }
+.lobby-player .not-ready { color: #ff4444; font-size: 12px; }
+#lobbyBack {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: none;
+    border: 1px solid #555;
+    color: #888;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    display: none;
+}
+#lobbyBack:hover { color: #ccc; border-color: #aaa; }
+.hidden { display: none !important; }
+
+/* tooltip for disabled wave button */
+.tooltip-wrap {
+    position: relative;
+    display: inline-block;
+}
+.tooltip-wrap .tooltip-text {
+    visibility: hidden;
+    background: #1a1a4edd;
+    color: #ff8888;
+    font-size: 11px;
+    padding: 4px 8px;
+    border: 1px solid #ff444444;
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    z-index: 10;
+}
+.tooltip-wrap:hover .tooltip-text {
+    visibility: visible;
+}
+
+/* === Recipe Panel === */
+#gameRow {
+    display: flex;
+    gap: 0;
+    margin-top: 10px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+#recipePanel {
+    width: 240px;
+    flex-shrink: 0;
+    background: #0a0a2e;
+    border: 2px solid #ff00ff;
+    box-shadow: 0 0 15px rgba(255,0,255,0.2), inset 0 0 30px rgba(255,0,255,0.03);
+    padding: 10px;
+    font-size: 12px;
+    color: #ccc;
+    margin-left: 0;
+    height: 620px;
+    overflow-y: auto;
+    overflow-x: visible;
+    scrollbar-width: thin;
+    scrollbar-color: #ff00ff44 #0a0a2e;
+}
+#recipePanel::-webkit-scrollbar { width: 5px; }
+#recipePanel::-webkit-scrollbar-track { background: #0a0a2e; }
+#recipePanel::-webkit-scrollbar-thumb { background: #ff00ff44; border-radius: 3px; }
+#recipePanel h3 {
+    color: #ff00ff;
+    text-shadow: 0 0 10px rgba(255,0,255,0.5);
+    font-size: 14px;
+    text-align: center;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #ff00ff44;
+    padding-bottom: 6px;
+}
+.recipe-card {
+    background: #0d0d35;
+    border: 1px solid #2a2a6e;
+    padding: 6px 8px;
+    margin-bottom: 4px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: default;
+    transition: background 0.15s, border-color 0.15s;
+    position: relative;
+    overflow: visible;
+}
+.recipe-card:hover {
+    background: #12124a;
+}
+.recipe-tooltip, .synergy-tooltip {
+    display: none;
+    position: absolute;
+    right: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: #0a0a2ef5;
+    border: 1px solid #00ffff;
+    box-shadow: 0 0 20px #00ffff66, 0 0 40px #00ffff22;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #ccc;
+    white-space: nowrap;
+    z-index: 99999;
+    pointer-events: none;
+    min-width: 200px;
+    line-height: 1.6;
+}
+.recipe-card:hover > .recipe-tooltip,
+.synergy-row:hover > .synergy-tooltip {
+    display: block;
+}
+.recipe-card .recipe-dots {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.recipe-card .recipe-dots .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    display: inline-block;
+    border: 1px solid rgba(255,255,255,0.2);
+}
+.recipe-card .recipe-dots .recipe-plus {
+    color: #666;
+    font-size: 10px;
+}
+.recipe-card .recipe-dots .recipe-arrow {
+    color: #ff00ff;
+    font-size: 11px;
+}
+.recipe-card .recipe-result-name {
+    font-size: 11px;
+    font-weight: bold;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.recipe-card .recipe-status {
+    flex-shrink: 0;
+    font-size: 10px;
+}
+.recipe-card .recipe-status.missing {
+    color: #555;
+    font-size: 9px;
+}
+.combo-btn {
+    background: #3a3a00;
+    color: #ffff00;
+    border: 2px solid #ffff00;
+    padding: 4px 12px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    display: inline-block;
+    animation: comboPulse 1.5s ease-in-out infinite;
+    position: relative;
+    z-index: 100;
+    pointer-events: all;
+}
+.combo-btn:hover {
+    background: #5a5a00;
+    box-shadow: 0 0 15px rgba(255,255,0,0.5);
+}
+@keyframes comboPulse {
+    0%,100% { box-shadow: 0 0 5px rgba(255,255,0,0.3); }
+    50% { box-shadow: 0 0 20px rgba(255,255,0,0.6); }
+}
+/* Synergy compact styles */
+.synergy-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 4px;
+    margin: 2px 0;
+    border-radius: 2px;
+    transition: all 0.2s;
+    position: relative;
+    cursor: default;
+    overflow: visible;
+}
+.synergy-row.active {
+    background: rgba(255,255,255,0.03);
+}
+.synergy-row .syn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.synergy-row .syn-name {
+    font-size: 11px;
+    width: 26px;
+    flex-shrink: 0;
+}
+.synergy-row .syn-pips {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+.synergy-row .syn-pips .pip {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid;
+}
+.synergy-row .syn-pips .pip.filled {
+    opacity: 1;
+}
+.synergy-row .syn-pips .pip.empty {
+    opacity: 0.2;
+}
+.synergy-row .syn-bonus {
+    font-size: 10px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+/* BGM button */
+#bgmBtn {
+    background: none;
+    border: 1px solid #555;
+    color: #888;
+    padding: 4px 10px;
+    font-size: 16px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    min-width: 40px;
+}
+#bgmBtn:hover { color: #fff; border-color: #aaa; }
+#bgmBtn.active { color: #00ff88; border-color: #00ff88; }
+
+/* === Stage Select Overlay === */
+#stageSelect {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #050510;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+#stageSelectBox {
+    background: #0a0a2e;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 40px rgba(0,255,255,0.2), inset 0 0 60px rgba(0,255,255,0.03);
+    padding: 30px;
+    width: 700px;
+    max-height: 90vh;
+    overflow-y: auto;
+    text-align: center;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: #00ffff44 #0a0a2e;
+}
+.stage-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.stage-gold {
+    font-size: 18px;
+    color: #ffdd00;
+    text-shadow: 0 0 10px rgba(255,221,0,0.4);
+}
+.stage-equipped {
+    font-size: 12px;
+    color: #ff88ff;
+    margin-top: 4px;
+}
+.stage-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.stage-card {
+    background: #0d0d35;
+    border: 2px solid #2a2a6e;
+    padding: 12px 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+    position: relative;
+}
+.stage-card:hover:not(.locked) {
+    background: #12124a;
+    border-color: #00ffff;
+    box-shadow: 0 0 15px rgba(0,255,255,0.3);
+}
+.stage-card.locked {
+    opacity: 0.4;
+    cursor: default;
+}
+.stage-card .stage-num {
+    font-size: 22px;
+    font-weight: bold;
+    color: #00ffff;
+}
+.stage-card.locked .stage-num { color: #555; }
+.stage-card .stage-label {
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 4px;
+}
+.stage-card .stage-waves {
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+}
+.stage-card .stage-rating {
+    font-size: 20px;
+    margin-top: 6px;
+    font-weight: bold;
+}
+.stage-card .stage-lock {
+    font-size: 28px;
+    margin-top: 6px;
+}
+.stage-btns {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+/* === Rating Screen Overlay === */
+#ratingScreen {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(5,5,16,0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1001;
+}
+#ratingBox {
+    background: #0a0a2e;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 60px rgba(0,255,255,0.3);
+    padding: 40px 60px;
+    text-align: center;
+    min-width: 360px;
+}
+.rating-stage-name {
+    font-size: 20px;
+    color: #aaa;
+    margin-bottom: 8px;
+}
+.rating-clear {
+    font-size: 28px;
+    color: #00ff88;
+    text-shadow: 0 0 15px rgba(0,255,136,0.5);
+    margin-bottom: 20px;
+}
+.rating-letter {
+    font-size: 96px;
+    font-weight: bold;
+    text-shadow: 0 0 40px;
+    margin: 16px 0;
+    animation: ratingPop 0.5s ease-out;
+}
+@keyframes ratingPop {
+    0% { transform: scale(0.3); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+}
+.rating-gold {
+    font-size: 22px;
+    color: #ffdd00;
+    margin: 16px 0;
+}
+.rating-btns {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* === Relic Shop Overlay === */
+#relicShop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(5,5,16,0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1002;
+}
+#relicShopBox {
+    background: #0a0a2e;
+    border: 2px solid #ff00ff;
+    box-shadow: 0 0 40px rgba(255,0,255,0.2);
+    padding: 30px;
+    width: 720px;
+    max-height: 85vh;
+    overflow-y: auto;
+    text-align: center;
+    scrollbar-width: thin;
+    scrollbar-color: #ff00ff44 #0a0a2e;
+}
+.relic-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+}
+.relic-card {
+    background: #0d0d35;
+    border: 2px solid #2a2a6e;
+    padding: 12px;
+    text-align: left;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.relic-card:hover { border-color: #ff00ff; background: #12124a; }
+.relic-card.owned { border-color: #00ff8866; }
+.relic-card.equipped { border-color: #ffdd00; box-shadow: 0 0 10px rgba(255,221,0,0.2); }
+.relic-icon { font-size: 28px; flex-shrink: 0; width: 40px; text-align: center; }
+.relic-info { flex: 1; }
+.relic-name { font-size: 13px; color: #fff; font-weight: bold; }
+.relic-desc { font-size: 10px; color: #888; margin-top: 3px; }
+.relic-cost { font-size: 11px; color: #ffdd00; margin-top: 3px; }
+.relic-status { font-size: 10px; margin-top: 3px; }
+.relic-status.st-owned { color: #00ff88; }
+.relic-status.st-equipped { color: #ffdd00; }
+.relic-equip-slots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin: 12px 0;
+}
+.relic-slot {
+    width: 60px; height: 60px;
+    border: 2px dashed #555;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: #0d0d35;
+    cursor: pointer;
+}
+.relic-slot.filled {
+    border-color: #ffdd00;
+    border-style: solid;
+}
+</style>
+</head>
+<body>
+
+<!-- ====== LOBBY OVERLAY ====== -->
+<div id="lobby">
+<div id="lobbyBox">
+    <button id="lobbyBack" onclick="lobbyGoBack()">&#x25C0; 뒤로</button>
+
+    <!-- Main Menu -->
+    <div id="lobbyMain">
+        <div class="lobby-title">네온 타워디펜스</div>
+        <div class="lobby-subtitle">CO-OP TOWER DEFENSE</div>
+        <div class="lobby-section">
+            <label style="font-size:13px;color:#888;">닉네임</label><br>
+            <input id="nameInput" class="lobby-input" type="text" value="플레이어" maxlength="12" style="margin-top:6px;">
+        </div>
+        <div class="lobby-section">
+            <button class="lobby-btn primary" onclick="lobbyCreateRoom()">방 만들기</button>
+            <button class="lobby-btn" onclick="lobbyShowJoin()">방 참가</button>
+        </div>
+        <hr class="lobby-divider">
+        <button class="lobby-btn solo" onclick="startSoloGame()">솔로 플레이</button>
+    </div>
+
+    <!-- Join Room -->
+    <div id="lobbyJoin" class="hidden">
+        <div class="lobby-title" style="font-size:22px;">방 참가</div>
+        <div class="lobby-section">
+            <label style="font-size:13px;color:#888;">방 코드 입력</label><br>
+            <input id="joinCodeInput" class="lobby-input" type="text" maxlength="6" placeholder="ABC123" style="margin-top:6px;text-transform:uppercase;letter-spacing:4px;font-size:22px;">
+        </div>
+        <button class="lobby-btn primary" onclick="lobbyJoinRoom()">접속</button>
+        <div id="joinStatus" class="lobby-status"></div>
+    </div>
+
+    <!-- Room (host/guest waiting) -->
+    <div id="lobbyRoom" class="hidden">
+        <div class="lobby-title" style="font-size:22px;">대기실</div>
+        <div style="font-size:13px;color:#888;margin-bottom:6px;">방 코드</div>
+        <div id="roomCodeDisplay" class="lobby-roomcode"></div>
+        <div style="font-size:11px;color:#555;margin-bottom:12px;">상대방에게 이 코드를 알려주세요</div>
+
+        <div class="lobby-players" id="playerList"></div>
+
+        <div id="roomStatus" class="lobby-status"></div>
+
+        <div class="lobby-section">
+            <button id="readyBtn" class="lobby-btn" onclick="toggleReady()">준비 완료</button>
+            <button id="gameStartBtn" class="lobby-btn start hidden" onclick="hostStartGame()" disabled>게임 시작</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- ====== STAGE SELECT OVERLAY ====== -->
+<div id="stageSelect" class="hidden">
+<div id="stageSelectBox">
+    <div class="stage-header">
+        <div>
+            <div class="lobby-title" style="font-size:22px;">스테이지 선택</div>
+            <div class="stage-equipped" id="stageEquippedRelics"></div>
+        </div>
+        <div class="stage-gold" id="stageGoldDisplay">💰 0</div>
+    </div>
+    <div class="stage-grid" id="stageGrid"></div>
+    <div class="stage-btns">
+        <button class="lobby-btn" onclick="openRelicShop()">🔮 유물 상점</button>
+        <button class="lobby-btn" onclick="backToLobbyFromStage()">◀ 로비로</button>
+    </div>
+</div>
+</div>
+
+<!-- ====== RATING SCREEN OVERLAY ====== -->
+<div id="ratingScreen" class="hidden">
+<div id="ratingBox">
+    <div class="rating-stage-name" id="ratingStageLabel"></div>
+    <div class="rating-clear">클리어!</div>
+    <div class="rating-letter" id="ratingLetter"></div>
+    <div class="rating-gold" id="ratingGoldEarned"></div>
+    <div class="rating-btns">
+        <button class="lobby-btn" id="ratingNextBtn" onclick="ratingNextStage()">다음 스테이지 ▶</button>
+        <button class="lobby-btn" onclick="ratingBackToSelect()">스테이지 선택</button>
+    </div>
+</div>
+</div>
+
+<!-- ====== RELIC SHOP OVERLAY ====== -->
+<div id="relicShop" class="hidden">
+<div id="relicShopBox">
+    <div class="lobby-title" style="font-size:20px;color:#ff00ff;">🔮 유물 상점</div>
+    <div style="font-size:12px;color:#888;margin:8px 0;">유물을 구매하고 장착하여 전투를 강화하세요 (최대 3개 장착)</div>
+    <div class="stage-gold" id="shopGoldDisplay" style="margin:8px 0;">💰 0</div>
+    <div style="font-size:12px;color:#ffdd00;margin:8px 0;">장착 슬롯:</div>
+    <div class="relic-equip-slots" id="relicSlots"></div>
+    <div class="relic-grid" id="relicGrid"></div>
+    <div style="margin-top:16px;">
+        <button class="lobby-btn" onclick="closeRelicShop()">◀ 돌아가기</button>
+    </div>
+</div>
+</div>
+
+<!-- ====== GAME AREA (hidden until game starts) ====== -->
+<div id="gameArea" style="display:none">
+<div id="gameRow">
+<canvas id="gameCanvas" width="1000" height="620"></canvas>
+<div id="recipePanel">
+    <h3>&#x2726; 히든 조합 &#x2726;</h3>
+    <div id="recipeCards"></div>
+    <hr style="border-color:#2a2a6e;margin:10px 0;">
+    <h3 style="color:#ffff00;">&#x26A1; 시너지 보너스</h3>
+    <div id="synergyRecipes" style="font-size:11px;color:#aaa;"></div>
+</div>
+</div>
+<div id="ui">
+    <button id="summonBtn" onclick="summonTower()">&#x1F3B2; 랜덤 소환 (50 에너지)</button>
+    <span class="tooltip-wrap">
+        <button id="startWaveBtn" onclick="startNextWave()">&#x25B6; 웨이브 시작</button>
+        <span class="tooltip-text" id="waveTooltip" style="display:none;">호스트만 시작 가능</span>
+    </span>
+    <span id="info">타워 드래그: 빈 칸 → 이동 · 같은 타워 → 합성</span>
+    <button id="bgmBtn" onclick="toggleBGM()" title="BGM 켜기/끄기">🔇</button>
+</div>
+<div id="synergyBar"></div>
+</div>
+<div id="toast" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#ff004488;color:#fff;padding:12px 24px;border-radius:8px;font-size:16px;pointer-events:none;opacity:0;transition:opacity 0.3s;z-index:100;"></div>
+
+<script>
+// ================================================================
+// NEON TOWER DEFENSE - MULTIPLAYER HTML5 PROTOTYPE
+// PeerJS-based co-op with lobby system
+// Pixel Art + Hidden Combo System + Stage/Relic System
+// ================================================================
+
+// === SAVE SYSTEM ===
+let saveData = {
+    nickname: '플레이어',
+    gold: 0,
+    unlockedStage: 1,
+    stageRatings: {},
+    ownedRelics: [],
+    equippedRelics: [],
+    relicLevels: {},
+};
+
+function loadSave() {
+    try {
+        let raw = localStorage.getItem('neonTD_save');
+        if (raw) {
+            let parsed = JSON.parse(raw);
+            saveData.nickname = parsed.nickname || '플레이어';
+            saveData.gold = parsed.gold || 0;
+            saveData.unlockedStage = parsed.unlockedStage || 1;
+            saveData.stageRatings = parsed.stageRatings || {};
+            saveData.ownedRelics = parsed.ownedRelics || [];
+            saveData.equippedRelics = parsed.equippedRelics || [];
+            saveData.relicLevels = parsed.relicLevels || {};
+            // Validate equippedRelics max 3
+            if (saveData.equippedRelics.length > 3) saveData.equippedRelics = saveData.equippedRelics.slice(0, 3);
+        }
+    } catch(e) { console.warn('Save load failed:', e); }
+}
+
+function writeSave() {
+    try {
+        localStorage.setItem('neonTD_save', JSON.stringify(saveData));
+    } catch(e) { console.warn('Save write failed:', e); }
+}
+
+loadSave();
+
+// === STAGE DEFINITIONS ===
+const STAGES = [
+    { id:1, waves:5, bossType:'normal', enemies:['normal'], hpScale:1.0, speedScale:1.0, label:'초원' },
+    { id:2, waves:7, bossType:'fast', enemies:['normal','fast'], hpScale:1.1, speedScale:1.0, label:'숲' },
+    { id:3, waves:8, bossType:'tank', enemies:['normal','fast','tank'], hpScale:1.2, speedScale:1.0, label:'동굴' },
+    { id:4, waves:10, bossType:'split', enemies:['normal','fast','tank'], hpScale:1.3, speedScale:1.1, label:'화산' },
+    { id:5, waves:12, bossType:'shield', enemies:['normal','fast','tank'], hpScale:1.5, speedScale:1.1, label:'빙하' },
+    { id:6, waves:13, bossType:'regen', enemies:['normal','fast','tank'], hpScale:1.7, speedScale:1.2, label:'사막' },
+    { id:7, waves:15, bossType:'double', enemies:['normal','fast','tank'], hpScale:2.0, speedScale:1.2, label:'심해' },
+    { id:8, waves:16, bossType:'berserk', enemies:['normal','fast','tank'], hpScale:2.5, speedScale:1.3, label:'지옥' },
+    { id:9, waves:18, bossType:'dark', enemies:['normal','fast','tank'], hpScale:3.0, speedScale:1.3, label:'어둠' },
+    { id:10, waves:20, bossType:'final', enemies:['normal','fast','tank'], hpScale:4.0, speedScale:1.5, label:'종말' },
+];
+
+let currentStage = null; // set when stage starts
+let stageMode = false;   // true = stage mode, false = legacy infinite
+let stageStartHP = 5;    // HP at stage start for rating
+let stageAutoWaveTimer = 0;
+
+// === RELIC DEFINITIONS ===
+const RELICS = [
+    { id:'attack_charm', name:'공격의 부적', cost:200, desc:'전체 타워 공격력 +15%', effect:'dmg', value:0.15, icon:'⚔' },
+    { id:'speed_boots', name:'신속의 장화', cost:200, desc:'전체 타워 공격속도 +15%', effect:'spd', value:0.15, icon:'👢' },
+    { id:'hunter_eye', name:'사냥꾼의 눈', cost:300, desc:'전체 타워 사거리 +20%', effect:'range', value:0.20, icon:'👁' },
+    { id:'energy_crystal', name:'에너지 수정', cost:250, desc:'시작 에너지 +100', effect:'startSP', value:100, icon:'💎' },
+    { id:'lucky_coin', name:'행운의 동전', cost:350, desc:'광산 에너지 드롭 확률 +15%', effect:'mineDrop', value:0.15, icon:'🪙' },
+    { id:'steel_shield', name:'강철 방패', cost:300, desc:'최대 HP +2', effect:'maxHP', value:2, icon:'🛡' },
+    { id:'vampire_ring', name:'흡혈의 반지', cost:400, desc:'적 처치 시 에너지 +3', effect:'killSP', value:3, icon:'💍' },
+    { id:'time_sand', name:'시간의 모래', cost:500, desc:'적 이동속도 -10%', effect:'enemySlow', value:0.10, icon:'⏳' },
+    { id:'sage_stone', name:'현자의 돌', cost:600, desc:'업그레이드 비용 -20%', effect:'upgDiscount', value:0.20, icon:'🔮' },
+    { id:'dragon_heart', name:'용의 심장', cost:800, desc:'히든 캐릭터 공격력 +30%', effect:'hiddenDmg', value:0.30, icon:'❤' },
+];
+
+// Relic level system
+const RELIC_LEVEL_MULTIPLIER = [1.0, 1.5, 2.0, 2.8, 4.0]; // Lv1-5
+const RELIC_UPGRADE_COST_MULTI = [0, 1.0, 2.0, 4.0, 8.0]; // cost to reach Lv2, Lv3, Lv4, Lv5
+const MAX_RELIC_LEVEL = 5;
+
+function getRelicUpgradeCost(relicId) {
+    let relic = getRelicDef(relicId);
+    if (!relic) return -1;
+    let currentLevel = (saveData.relicLevels[relicId]) || 1;
+    if (currentLevel >= MAX_RELIC_LEVEL) return -1;
+    return Math.floor(relic.cost * RELIC_UPGRADE_COST_MULTI[currentLevel]);
+}
+
+function upgradeRelic(relicId) {
+    let cost = getRelicUpgradeCost(relicId);
+    if (cost < 0) { showToast('이미 최대 레벨입니다!'); return; }
+    if (saveData.gold < cost) { showToast('골드가 부족합니다! (필요: ' + cost + ')'); return; }
+    saveData.gold -= cost;
+    let currentLevel = (saveData.relicLevels[relicId]) || 1;
+    saveData.relicLevels[relicId] = currentLevel + 1;
+    writeSave();
+    let rd = getRelicDef(relicId);
+    showToast(rd.name + ' Lv.' + (currentLevel + 1) + ' 업그레이드!', 1500);
+    renderRelicShop();
+}
+
+function getRelicBonus(effectType) {
+    let total = 0;
+    for (let i = 0; i < saveData.equippedRelics.length; i++) {
+        let relicId = saveData.equippedRelics[i];
+        for (let j = 0; j < RELICS.length; j++) {
+            if (RELICS[j].id === relicId && RELICS[j].effect === effectType) {
+                let level = (saveData.relicLevels[relicId]) || 1;
+                total += RELICS[j].value * RELIC_LEVEL_MULTIPLIER[level - 1];
+            }
+        }
+    }
+    return total;
+}
+
+function getRelicDef(relicId) {
+    for (let i = 0; i < RELICS.length; i++) {
+        if (RELICS[i].id === relicId) return RELICS[i];
+    }
+    return null;
+}
+
+// === RATING SYSTEM ===
+const GOLD_REWARDS = { S: 300, A: 200, B: 100, C: 50 };
+
+function getRating(currentHp, maxHp) {
+    let ratio = currentHp / maxHp;
+    if (ratio >= 1.0) return 'S';
+    if (ratio >= 0.8) return 'A';
+    if (ratio >= 0.5) return 'B';
+    return 'C';
+}
+
+function getRatingColor(rating) {
+    if (rating === 'S') return '#ffdd00';
+    if (rating === 'A') return '#00ffff';
+    if (rating === 'B') return '#00ff88';
+    return '#888888';
+}
+
+// === STAGE SELECT UI ===
+function showStageSelect() {
+    document.getElementById('lobby').style.display = 'none';
+    document.getElementById('gameArea').style.display = 'none';
+    document.getElementById('ratingScreen').classList.add('hidden');
+    document.getElementById('relicShop').classList.add('hidden');
+    document.getElementById('stageSelect').classList.remove('hidden');
+    renderStageGrid();
+}
+
+function renderStageGrid() {
+    let gridEl = document.getElementById('stageGrid');
+    let html = '';
+    for (let i = 0; i < STAGES.length; i++) {
+        let s = STAGES[i];
+        let unlocked = s.id <= saveData.unlockedStage;
+        let rating = saveData.stageRatings[s.id] || '';
+        let rColor = getRatingColor(rating);
+        html += '<div class="stage-card' + (unlocked ? '' : ' locked') + '" ' + (unlocked ? 'onclick="startStage(' + s.id + ')"' : '') + '>';
+        html += '<div class="stage-num">' + s.id + '</div>';
+        html += '<div class="stage-label">' + s.label + '</div>';
+        html += '<div class="stage-waves">' + s.waves + '웨이브</div>';
+        if (unlocked) {
+            if (rating) {
+                html += '<div class="stage-rating" style="color:' + rColor + '">' + rating + '</div>';
+            } else {
+                html += '<div class="stage-rating" style="color:#555">-</div>';
+            }
+        } else {
+            html += '<div class="stage-lock">🔒</div>';
+        }
+        html += '</div>';
+    }
+    gridEl.innerHTML = html;
+    document.getElementById('stageGoldDisplay').textContent = '💰 ' + saveData.gold;
+    // Show equipped relics with levels
+    let eqHtml = '';
+    for (let i = 0; i < saveData.equippedRelics.length; i++) {
+        let rid = saveData.equippedRelics[i];
+        let rd = getRelicDef(rid);
+        let rlvl = (saveData.relicLevels[rid]) || 1;
+        if (rd) eqHtml += rd.icon + 'Lv.' + rlvl + ' ';
+    }
+    document.getElementById('stageEquippedRelics').textContent = eqHtml ? '\uC7A5\uCC29: ' + eqHtml : '\uC7A5\uCC29\uB41C \uC720\uBB3C \uC5C6\uC74C';
+}
+
+function backToLobbyFromStage() {
+    document.getElementById('stageSelect').classList.add('hidden');
+    document.getElementById('lobby').style.display = 'flex';
+    showLobbyPhase('main');
+}
+
+function startStage(stageId) {
+    let stage = null;
+    for (let i = 0; i < STAGES.length; i++) {
+        if (STAGES[i].id === stageId) { stage = STAGES[i]; break; }
+    }
+    if (!stage || stageId > saveData.unlockedStage) return;
+    currentStage = stage;
+    stageMode = true;
+    document.getElementById('stageSelect').classList.add('hidden');
+    document.getElementById('gameArea').style.display = '';
+    document.getElementById('waveTooltip').style.display = 'none';
+    resetGameState();
+    // Apply relic bonuses at start
+    let startSPBonus = getRelicBonus('startSP');
+    sp = 100 + startSPBonus;
+    let maxHPBonus = getRelicBonus('maxHP');
+    hp = 5 + maxHPBonus;
+    stageStartHP = hp;
+    initGrid();
+    requestAnimationFrame(function(time) { lastTime = time; gameLoop(time); });
+    // Auto-start first wave after 3 seconds
+    stageAutoWaveTimer = 3.0;
+}
+
+// === RATING SCREEN UI ===
+function showRatingScreen(rating, goldEarned) {
+    document.getElementById('gameArea').style.display = 'none';
+    document.getElementById('ratingScreen').classList.remove('hidden');
+    document.getElementById('ratingStageLabel').textContent = 'Stage ' + currentStage.id + ' - ' + currentStage.label;
+    let letterEl = document.getElementById('ratingLetter');
+    letterEl.textContent = rating;
+    letterEl.style.color = getRatingColor(rating);
+    letterEl.style.textShadow = '0 0 40px ' + getRatingColor(rating);
+    document.getElementById('ratingGoldEarned').textContent = '💰 +' + goldEarned + ' Gold';
+    // Hide next button if last stage
+    document.getElementById('ratingNextBtn').style.display = currentStage.id >= 10 ? 'none' : '';
+}
+
+function ratingNextStage() {
+    document.getElementById('ratingScreen').classList.add('hidden');
+    let nextId = currentStage.id + 1;
+    if (nextId <= saveData.unlockedStage && nextId <= 10) {
+        startStage(nextId);
+    } else {
+        showStageSelect();
+    }
+}
+
+function ratingBackToSelect() {
+    document.getElementById('ratingScreen').classList.add('hidden');
+    showStageSelect();
+}
+
+function onStageClear() {
+    if (!currentStage) return;
+    let rating = getRating(hp, stageStartHP);
+    let goldEarned = GOLD_REWARDS[rating] || 50;
+    saveData.gold += goldEarned;
+    // Save best rating
+    let prev = saveData.stageRatings[currentStage.id];
+    let ratingOrder = { S: 4, A: 3, B: 2, C: 1 };
+    if (!prev || (ratingOrder[rating] || 0) > (ratingOrder[prev] || 0)) {
+        saveData.stageRatings[currentStage.id] = rating;
+    }
+    // Unlock next stage
+    if (currentStage.id < 10 && currentStage.id >= saveData.unlockedStage) {
+        saveData.unlockedStage = currentStage.id + 1;
+    }
+    writeSave();
+    showRatingScreen(rating, goldEarned);
+}
+
+function onStageGameOver() {
+    // In stage mode, game over shows the game over screen, then lets you go back
+    // We override the R/L key handlers below to handle stage mode
+}
+
+// === RELIC SHOP UI ===
+function openRelicShop() {
+    document.getElementById('relicShop').classList.remove('hidden');
+    renderRelicShop();
+}
+
+function closeRelicShop() {
+    document.getElementById('relicShop').classList.add('hidden');
+    renderStageGrid(); // refresh gold display
+}
+
+function renderRelicShop() {
+    document.getElementById('shopGoldDisplay').textContent = '💰 ' + saveData.gold;
+    // Equip slots
+    let slotsHtml = '';
+    for (let i = 0; i < 3; i++) {
+        let relicId = saveData.equippedRelics[i];
+        if (relicId) {
+            let rd = getRelicDef(relicId);
+            let rlvl = (saveData.relicLevels[relicId]) || 1;
+            slotsHtml += '<div class="relic-slot filled" onclick="unequipRelic(' + i + ')" title="\uD074\uB9AD\uD558\uC5EC \uD574\uC81C" style="flex-direction:column;font-size:22px;">' + (rd ? rd.icon : '?') + '<span style="font-size:9px;color:#00ff88;">Lv.' + rlvl + '</span></div>';
+        } else {
+            slotsHtml += '<div class="relic-slot">-</div>';
+        }
+    }
+    document.getElementById('relicSlots').innerHTML = slotsHtml;
+    // Relic grid
+    let gridHtml = '';
+    for (let i = 0; i < RELICS.length; i++) {
+        let r = RELICS[i];
+        let owned = saveData.ownedRelics.indexOf(r.id) !== -1;
+        let equipped = saveData.equippedRelics.indexOf(r.id) !== -1;
+        let rlvl = (saveData.relicLevels[r.id]) || 1;
+        let cls = equipped ? 'equipped' : (owned ? 'owned' : '');
+        gridHtml += '<div class="relic-card ' + cls + '" onclick="onRelicCardClick(\'' + r.id + '\')">';
+        gridHtml += '<div class="relic-icon">' + r.icon + '</div>';
+        gridHtml += '<div class="relic-info">';
+        gridHtml += '<div class="relic-name">' + r.name;
+        if (owned) gridHtml += ' <span style="color:#00ff88;font-size:11px;">Lv.' + rlvl + '</span>';
+        gridHtml += '</div>';
+        // Show effect with current level multiplier
+        let effectVal = r.value * RELIC_LEVEL_MULTIPLIER[rlvl - 1];
+        let effectStr = r.desc;
+        if (owned && rlvl > 1) {
+            // Show enhanced description
+            if (r.effect === 'dmg' || r.effect === 'spd' || r.effect === 'range' || r.effect === 'mineDrop' || r.effect === 'enemySlow' || r.effect === 'upgDiscount' || r.effect === 'hiddenDmg') {
+                effectStr = r.desc.replace(/\+\d+%/, '+' + Math.round(effectVal * 100) + '%').replace(/-\d+%/, '-' + Math.round(effectVal * 100) + '%');
+            } else if (r.effect === 'startSP') {
+                effectStr = r.desc.replace(/\+\d+/, '+' + Math.round(effectVal));
+            } else if (r.effect === 'maxHP') {
+                effectStr = r.desc.replace(/\+\d+/, '+' + Math.round(effectVal));
+            } else if (r.effect === 'killSP') {
+                effectStr = r.desc.replace(/\+\d+/, '+' + Math.round(effectVal));
+            }
+        }
+        gridHtml += '<div class="relic-desc">' + effectStr + '</div>';
+        if (!owned) {
+            gridHtml += '<div class="relic-cost">\uD83D\uDCB0 ' + r.cost + '</div>';
+        } else if (equipped) {
+            gridHtml += '<div class="relic-status st-equipped">\u2726 \uC7A5\uCC29\uC911</div>';
+        } else {
+            gridHtml += '<div class="relic-status st-owned">\u2713 \uBCF4\uC720\uC911 (\uD074\uB9AD\uD558\uC5EC \uC7A5\uCC29)</div>';
+        }
+        // Upgrade button for owned relics
+        if (owned && rlvl < MAX_RELIC_LEVEL) {
+            let upgCost = getRelicUpgradeCost(r.id);
+            let canAffordUpg = saveData.gold >= upgCost;
+            let nextLvlVal = r.value * RELIC_LEVEL_MULTIPLIER[rlvl];
+            gridHtml += '<div style="margin-top:4px;">';
+            gridHtml += '<button onclick="event.stopPropagation(); upgradeRelic(\'' + r.id + '\')" style="background:' + (canAffordUpg ? '#002244' : '#222') + ';color:' + (canAffordUpg ? '#00ccff' : '#555') + ';border:1px solid ' + (canAffordUpg ? '#00aaff' : '#333') + ';padding:2px 8px;font-size:10px;font-family:inherit;cursor:' + (canAffordUpg ? 'pointer' : 'default') + ';">';
+            gridHtml += '\uC5C5\uADF8\uB808\uC774\uB4DC Lv.' + (rlvl + 1) + ' (\uD83D\uDCB0 ' + upgCost + ')</button>';
+            gridHtml += '</div>';
+        } else if (owned && rlvl >= MAX_RELIC_LEVEL) {
+            gridHtml += '<div style="margin-top:4px;"><span style="color:#ffdd00;font-size:10px;font-weight:bold;">\u2605 MAX \u2605</span></div>';
+        }
+        gridHtml += '</div></div>';
+    }
+    document.getElementById('relicGrid').innerHTML = gridHtml;
+}
+
+function onRelicCardClick(relicId) {
+    let owned = saveData.ownedRelics.indexOf(relicId) !== -1;
+    let equipped = saveData.equippedRelics.indexOf(relicId) !== -1;
+    if (!owned) {
+        // Buy
+        let rd = getRelicDef(relicId);
+        if (!rd) return;
+        if (saveData.gold < rd.cost) {
+            showToast('골드가 부족합니다! (필요: ' + rd.cost + ')');
+            return;
+        }
+        saveData.gold -= rd.cost;
+        saveData.ownedRelics.push(relicId);
+        writeSave();
+        showToast(rd.name + ' 구매 완료!', 1500);
+        renderRelicShop();
+    } else if (equipped) {
+        // Unequip
+        let idx = saveData.equippedRelics.indexOf(relicId);
+        if (idx !== -1) saveData.equippedRelics.splice(idx, 1);
+        writeSave();
+        renderRelicShop();
+    } else {
+        // Equip
+        if (saveData.equippedRelics.length >= 3) {
+            showToast('장착 슬롯이 가득 찼습니다! (최대 3개)');
+            return;
+        }
+        saveData.equippedRelics.push(relicId);
+        writeSave();
+        renderRelicShop();
+    }
+}
+
+function unequipRelic(slotIdx) {
+    if (slotIdx < saveData.equippedRelics.length) {
+        saveData.equippedRelics.splice(slotIdx, 1);
+        writeSave();
+        renderRelicShop();
+    }
+}
+
+// === NETWORKING STATE ===
+let peer = null;
+let conn = null;
+let isHost = false;
+let roomCode = '';
+let playerName = '플레이어';
+let opponentName = '';
+let isMultiplayer = false;
+let myReady = false;
+let opponentReady = false;
+let opponentConnected = false;
+let lobbyPhase = 'main'; // 'main', 'join', 'room'
+let syncInterval = null;
+let peerReady = false; // true once peer is open
+
+// === LOBBY FUNCTIONS ===
+
+function generateRoomCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+}
+
+function lobbyGoBack() {
+    // Clean up peer if exists
+    if (peer) {
+        peer.destroy();
+        peer = null;
+    }
+    conn = null;
+    isHost = false;
+    roomCode = '';
+    myReady = false;
+    opponentReady = false;
+    opponentConnected = false;
+    peerReady = false;
+    showLobbyPhase('main');
+}
+
+function showLobbyPhase(phase) {
+    lobbyPhase = phase;
+    document.getElementById('lobbyMain').classList.toggle('hidden', phase !== 'main');
+    document.getElementById('lobbyJoin').classList.toggle('hidden', phase !== 'join');
+    document.getElementById('lobbyRoom').classList.toggle('hidden', phase !== 'room');
+    document.getElementById('lobbyBack').style.display = phase === 'main' ? 'none' : 'block';
+}
+
+function lobbyShowJoin() {
+    playerName = document.getElementById('nameInput').value.trim() || '플레이어';
+    showLobbyPhase('join');
+    document.getElementById('joinStatus').textContent = '';
+    document.getElementById('joinCodeInput').value = '';
+    document.getElementById('joinCodeInput').focus();
+}
+
+function lobbyCreateRoom() {
+    playerName = document.getElementById('nameInput').value.trim() || '플레이어';
+    isHost = true;
+    roomCode = generateRoomCode();
+
+    document.getElementById('roomCodeDisplay').textContent = roomCode;
+    showLobbyPhase('room');
+    updateRoomStatus('PeerJS 서버에 연결 중...', '');
+    updatePlayerList();
+
+    // Show start button for host (hidden until both ready)
+    document.getElementById('gameStartBtn').classList.remove('hidden');
+    document.getElementById('gameStartBtn').disabled = true;
+
+    // Create PeerJS peer as host
+    let peerId = 'neon-td-' + roomCode;
+    peer = new Peer(peerId);
+
+    peer.on('open', function(id) {
+        peerReady = true;
+        updateRoomStatus('대기 중... 상대방의 접속을 기다리고 있습니다', 'success');
+    });
+
+    peer.on('connection', function(dataConn) {
+        conn = dataConn;
+        setupHostConnection();
+    });
+
+    peer.on('error', function(err) {
+        console.error('PeerJS Host Error:', err);
+        if (err.type === 'unavailable-id') {
+            updateRoomStatus('이미 사용 중인 방 코드입니다. 다시 시도해주세요.', 'error');
+        } else {
+            updateRoomStatus('연결 오류: ' + err.type, 'error');
+        }
+    });
+}
+
+function setupHostConnection() {
+    conn.on('open', function() {
+        opponentConnected = true;
+        // Send host info
+        conn.send({ type: 'playerInfo', name: playerName });
+        updateRoomStatus('상대방이 접속했습니다!', 'success');
+    });
+
+    conn.on('data', function(data) {
+        handleHostReceive(data);
+    });
+
+    conn.on('close', function() {
+        opponentConnected = false;
+        opponentReady = false;
+        opponentName = '';
+        if (lobbyPhase === 'room') {
+            updateRoomStatus('상대방이 나갔습니다', 'error');
+            updatePlayerList();
+            document.getElementById('gameStartBtn').disabled = true;
+        } else {
+            // In-game disconnect
+            showToast('상대방이 나갔습니다. 솔로 모드로 계속합니다.', 3000);
+            isMultiplayer = false;
+            conn = null;
+            if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
+        }
+    });
+}
+
+function handleHostReceive(data) {
+    if (!data || !data.type) return;
+    switch (data.type) {
+        case 'playerInfo':
+            opponentName = data.name || '게스트';
+            updatePlayerList();
+            break;
+        case 'ready':
+            opponentReady = data.ready;
+            updatePlayerList();
+            // Enable start if both ready
+            document.getElementById('gameStartBtn').disabled = !(myReady && opponentReady);
+            break;
+        case 'summon':
+            // Guest wants to summon - host processes it
+            summonTowerForPlayer('P2');
+            break;
+        case 'merge':
+            doMergeForPlayer(data.from.x, data.from.y, data.to.x, data.to.y, 'P2');
+            break;
+        case 'mergeOrSwap':
+            if (!doMergeForPlayer(data.from.x, data.from.y, data.to.x, data.to.y, 'P2')) {
+                swapTowers(data.from.x, data.from.y, data.to.x, data.to.y, 'P2');
+            }
+            break;
+        case 'move':
+            moveTower(data.from.x, data.from.y, data.to.x, data.to.y, 'P2');
+            break;
+        case 'sell':
+            sellTower(data.pos.x, data.pos.y, 'P2');
+            break;
+        case 'hiddenCombo':
+            // Guest wants to do hidden combo
+            performHiddenCombo(data.recipeIdx, 'P2');
+            break;
+        case 'upgrade':
+            upgradeTower(data.pos.x, data.pos.y, 'P2');
+            break;
+        case 'waveStart':
+            // Only host controls waves - ignore
+            break;
+    }
+}
+
+function lobbyJoinRoom() {
+    playerName = document.getElementById('nameInput').value.trim() || '플레이어';
+    let code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+    if (code.length < 3) {
+        setJoinStatus('방 코드를 입력해주세요', 'error');
+        return;
+    }
+
+    isHost = false;
+    roomCode = code;
+    setJoinStatus('연결 중...', '');
+
+    peer = new Peer();
+
+    peer.on('open', function() {
+        peerReady = true;
+        let hostId = 'neon-td-' + roomCode;
+        conn = peer.connect(hostId, { reliable: true });
+
+        conn.on('open', function() {
+            opponentConnected = true;
+            // Send guest info
+            conn.send({ type: 'playerInfo', name: playerName });
+
+            // Move to room view
+            document.getElementById('roomCodeDisplay').textContent = roomCode;
+            showLobbyPhase('room');
+            // Guest does not see start button
+            document.getElementById('gameStartBtn').classList.add('hidden');
+            updateRoomStatus('방에 접속했습니다! 준비를 눌러주세요.', 'success');
+            updatePlayerList();
+        });
+
+        conn.on('data', function(data) {
+            handleGuestReceive(data);
+        });
+
+        conn.on('close', function() {
+            opponentConnected = false;
+            if (lobbyPhase === 'room') {
+                updateRoomStatus('호스트가 나갔습니다', 'error');
+            } else {
+                // In-game
+                showToast('호스트가 나갔습니다 - 게임 종료', 5000);
+                gameOver = true;
+                // After a delay, go back to lobby
+                setTimeout(function() {
+                    document.getElementById('gameArea').style.display = 'none';
+                    document.getElementById('lobby').style.display = 'flex';
+                    resetGameState();
+                    lobbyGoBack();
+                }, 3000);
+            }
+        });
+
+        conn.on('error', function(err) {
+            setJoinStatus('연결 실패: ' + err.type, 'error');
+        });
+    });
+
+    peer.on('error', function(err) {
+        console.error('PeerJS Guest Error:', err);
+        if (err.type === 'peer-unavailable') {
+            setJoinStatus('방을 찾을 수 없습니다. 코드를 확인해주세요.', 'error');
+        } else {
+            setJoinStatus('연결 오류: ' + err.type, 'error');
+        }
+    });
+}
+
+function handleGuestReceive(data) {
+    if (!data || !data.type) return;
+    switch (data.type) {
+        case 'playerInfo':
+            opponentName = data.name || '호스트';
+            updatePlayerList();
+            break;
+        case 'ready':
+            opponentReady = data.ready;
+            updatePlayerList();
+            break;
+        case 'gameStart':
+            // Host tells us to start
+            startMultiplayerGame();
+            break;
+        case 'gameState':
+            // Full game state from host
+            applyReceivedState(data);
+            break;
+        case 'toast':
+            showToast(data.msg, data.duration || 1500);
+            break;
+    }
+}
+
+function toggleReady() {
+    myReady = !myReady;
+    document.getElementById('readyBtn').textContent = myReady ? '준비 취소' : '준비 완료';
+    document.getElementById('readyBtn').style.borderColor = myReady ? '#00ff88' : '#00ffff';
+    document.getElementById('readyBtn').style.color = myReady ? '#00ff88' : '#00ffff';
+
+    if (conn && conn.open) {
+        conn.send({ type: 'ready', ready: myReady });
+    }
+
+    updatePlayerList();
+
+    if (isHost) {
+        document.getElementById('gameStartBtn').disabled = !(myReady && opponentReady && opponentConnected);
+    }
+}
+
+function updatePlayerList() {
+    let html = '';
+    // Player 1 (host or self)
+    let p1Name, p1Badge, p1Ready;
+    if (isHost) {
+        p1Name = playerName;
+        p1Badge = '(호스트)';
+        p1Ready = myReady;
+    } else {
+        p1Name = opponentConnected ? (opponentName || '호스트') : '(대기 중...)';
+        p1Badge = '(호스트)';
+        p1Ready = opponentReady;
+    }
+    html += '<div class="lobby-player"><span><span class="name">' + escHtml(p1Name) + '</span><span class="badge"> ' + p1Badge + '</span></span>';
+    if (isHost || opponentConnected) {
+        html += '<span class="' + (p1Ready ? 'ready' : 'not-ready') + '">' + (p1Ready ? '준비 완료' : '대기 중') + '</span>';
+    }
+    html += '</div>';
+
+    // Player 2 (guest)
+    let p2Name, p2Badge, p2Ready;
+    if (!isHost) {
+        p2Name = playerName;
+        p2Badge = '(게스트)';
+        p2Ready = myReady;
+    } else {
+        p2Name = opponentConnected ? (opponentName || '게스트') : '(대기 중...)';
+        p2Badge = '(게스트)';
+        p2Ready = opponentReady;
+    }
+    html += '<div class="lobby-player"><span><span class="name">' + escHtml(p2Name) + '</span><span class="badge"> ' + p2Badge + '</span></span>';
+    if (!isHost || opponentConnected) {
+        html += '<span class="' + (p2Ready ? 'ready' : 'not-ready') + '">' + (p2Ready ? '준비 완료' : '대기 중') + '</span>';
+    }
+    html += '</div>';
+
+    document.getElementById('playerList').innerHTML = html;
+}
+
+function updateRoomStatus(msg, cls) {
+    let el = document.getElementById('roomStatus');
+    el.textContent = msg;
+    el.className = 'lobby-status' + (cls ? ' ' + cls : '');
+}
+
+function setJoinStatus(msg, cls) {
+    let el = document.getElementById('joinStatus');
+    el.textContent = msg;
+    el.className = 'lobby-status' + (cls ? ' ' + cls : '');
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function hostStartGame() {
+    if (!isHost || !myReady || !opponentReady || !opponentConnected) return;
+    // Tell guest to start
+    if (conn && conn.open) {
+        conn.send({ type: 'gameStart' });
+    }
+    startMultiplayerGame();
+}
+
+// For multiplayer stage support - host selects stage and sends to guest
+// For now, multiplayer uses legacy infinite mode (no stage select)
+// Stage mode is solo-only for simplicity
+
+function startMultiplayerGame() {
+    isMultiplayer = true;
+    document.getElementById('lobby').style.display = 'none';
+    document.getElementById('gameArea').style.display = '';
+    resetGameState();
+    initGrid();
+
+    // If guest, disable wave start button and show tooltip
+    if (!isHost) {
+        document.getElementById('startWaveBtn').disabled = true;
+        document.getElementById('waveTooltip').style.display = '';
+    } else {
+        document.getElementById('waveTooltip').style.display = 'none';
+    }
+
+    // Host broadcasts state 20 times/sec
+    if (isHost) {
+        syncInterval = setInterval(function() {
+            if (conn && conn.open) {
+                sendGameState();
+            }
+        }, 50);
+    }
+
+    requestAnimationFrame(function(time) { lastTime = time; gameLoop(time); });
+}
+
+function startSoloGame() {
+    playerName = document.getElementById('nameInput').value.trim() || '플레이어';
+    saveData.nickname = playerName;
+    writeSave();
+    isMultiplayer = false;
+    isHost = true; // solo acts as host for all logic
+    opponentName = '';
+    // Go to stage select instead of directly starting
+    showStageSelect();
+}
+
+// === WAVE PHASE SYSTEM ===
+let wavePhaseTimer = 60;        // 60 seconds per phase
+let wavePhaseIndex = 0;         // current phase within stage
+let overflowTimer = 0;          // timer for HP drain when 100+ enemies
+let wavePhaseSpawnTimer = 0;    // spawn interval timer
+let wavePhaseSpawnRate = 1.0;   // seconds between spawns, decreases each phase
+const OVERFLOW_LIMIT = 100;
+const OVERFLOW_DRAIN_INTERVAL = 5; // seconds
+
+function resetGameState() {
+    grid = [];
+    enemies = [];
+    projectiles = [];
+    particles = [];
+    lightningFlashes = [];
+    sp = 100;
+    hp = 5;
+    wave = 0;
+    waveActive = false;
+    enemiesToSpawn = [];
+    spawnTimer = 0;
+    gameOver = false;
+    selectedCell = null;
+    dragFrom = null;
+    spAccum = 0;
+    bonusSP = 0;
+    lastTime = 0;
+    shownHints = new Set();
+    currentHint = '';
+    upgradePopup = null;
+    stageAutoWaveTimer = 0;
+    wavePhaseTimer = 60;
+    wavePhaseIndex = 0;
+    overflowTimer = 0;
+    wavePhaseSpawnTimer = 0;
+    wavePhaseSpawnRate = 1.0;
+}
+
+// === MULTIPLAYER SYNC ===
+
+function sendGameState() {
+    if (!conn || !conn.open) return;
+    // Serialize grid
+    let gridData = [];
+    for (let x = 0; x < COLS; x++) {
+        gridData[x] = [];
+        for (let y = 0; y < ROWS; y++) {
+            let t = grid[x][y];
+            if (t) {
+                gridData[x][y] = { type: t.type, grade: t.grade, level: t.level || 1 };
+            } else {
+                gridData[x][y] = null;
+            }
+        }
+    }
+    // Serialize enemies
+    let enemyData = enemies.map(function(e) {
+        return { type: e.type, x: e.x, y: e.y, hp: e.hp, maxHp: e.maxHp, speed: e.speed, reward: e.reward, color: e.color, slowTimer: e.slowTimer, slowFactor: e.slowFactor };
+    });
+    // Serialize projectiles
+    let projData = projectiles.map(function(p) {
+        return { x: p.x, y: p.y, tx: p.tx, ty: p.ty, color: p.color, splash: p.splash, splashR: p.splashR, towerType: p.towerType };
+    });
+
+    conn.send({
+        type: 'gameState',
+        grid: gridData,
+        enemies: enemyData,
+        projectiles: projData,
+        sp: sp,
+        hp: hp,
+        wave: wave,
+        waveActive: waveActive,
+        gameOver: gameOver,
+        bonusSP: bonusSP
+    });
+}
+
+function applyReceivedState(state) {
+    // Rebuild grid from state
+    for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < ROWS; y++) {
+            let sd = state.grid[x][y];
+            if (sd) {
+                let def = TOWER_DEFS[sd.type];
+                grid[x][y] = {
+                    type: sd.type,
+                    grade: sd.grade,
+                    level: sd.level || 1,
+                    attackTimer: grid[x][y] ? grid[x][y].attackTimer : 0,
+                    def: def,
+                    effectiveDmg: def.dmg * Math.pow(1.5, sd.grade - 1),
+                    effectiveSpd: def.spd * (1 + (sd.grade - 1) * 0.1)
+                };
+            } else {
+                grid[x][y] = null;
+            }
+        }
+    }
+
+    // Rebuild enemies
+    enemies = state.enemies.map(function(e) {
+        return {
+            type: e.type, x: e.x, y: e.y,
+            hp: e.hp, maxHp: e.maxHp,
+            speed: e.speed, reward: e.reward, color: e.color,
+            slowTimer: e.slowTimer, slowFactor: e.slowFactor
+        };
+    });
+
+    // Rebuild projectiles
+    projectiles = state.projectiles.map(function(p) {
+        return {
+            x: p.x, y: p.y, tx: p.tx, ty: p.ty,
+            dmg: 0, color: p.color, splash: p.splash, splashR: p.splashR, speed: 500,
+            towerType: p.towerType || 'default', trail: []
+        };
+    });
+
+    sp = state.sp;
+    hp = state.hp;
+    wave = state.wave;
+    waveActive = state.waveActive;
+    gameOver = state.gameOver;
+    bonusSP = state.bonusSP;
+
+    // Update UI buttons
+    document.getElementById('summonBtn').disabled = sp < SUMMON_COST || gameOver;
+    // Guest never enables wave button in multiplayer
+    if (isMultiplayer && !isHost) {
+        document.getElementById('startWaveBtn').disabled = true;
+    } else {
+        document.getElementById('startWaveBtn').disabled = waveActive || gameOver;
+    }
+
+    // Update recipe panel
+    updateRecipePanel();
+}
+
+function sendInput(input) {
+    if (!conn || !conn.open) return;
+    conn.send(input);
+}
+
+// ═══════════════════════════════════════════
+// GAME LOGIC (runs on host; guest renders only)
+// ═══════════════════════════════════════════
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// ── Constants ──
+const COLS = 7, ROWS = 5, LANE_ROW = 2;
+const CELL_W = 100, CELL_H = 100;
+const GRID_X = 150, GRID_Y = 30;
+const SUMMON_COST = 50;
+const MAX_GRADE = 3;
+const BASE_SP_PER_SEC = 10;
+
+// ── Tower Definitions ──
+const TOWER_DEFS = {
+    archer:    { name:'궁수',     role:'PHYSICAL', dmg:15,  spd:1.5, range:450, color:'#00ffff', splash:false },
+    blade:     { name:'검사',     role:'PHYSICAL', dmg:20,  spd:2.0, range:250, color:'#ccccdd', splash:false },
+    gunner:    { name:'기관총',   role:'PHYSICAL', dmg:12,  spd:3.0, range:180, color:'#ff9900', splash:false },
+    mage:      { name:'마법사',   role:'MAGIC',    dmg:25,  spd:0.8, range:425, color:'#ff00ff', splash:false },
+    lightning: { name:'번개',     role:'MAGIC',    dmg:30,  spd:1.2, range:200, color:'#ffff00', splash:false },
+    cannon:    { name:'대포',     role:'SPLASH',   dmg:40,  spd:0.5, range:130, color:'#ff8800', splash:true, splashR:80 },
+    frost:     { name:'얼음',     role:'SUPPORT',  dmg:5,   spd:1.0, range:400, color:'#88ccff', splash:false, effect:'slow', effectVal:0.3 },
+    mine:      { name:'광산',     role:'ECONOMY',  dmg:8,   spd:1.2, range:150, color:'#ffff00', splash:false, effect:'energy_drop', effectVal:0.35 },
+    dragon:    { name:'드래곤',   role:'LEGENDARY',dmg:80,  spd:0.4, range:550, color:'#ff1100', splash:true, splashR:100 },
+    // Hidden characters (cannot be summoned, only via 3★+3★ combo)
+    shingoong: { name:'신궁', role:'HIDDEN', dmg:60, spd:2.0, range:300, color:'#00ffaa', splash:false, effect:'pierce', effectVal:3, hidden:true },
+    bingpok:   { name:'빙폭', role:'HIDDEN', dmg:50, spd:0.6, range:200, color:'#44ddff', splash:true, splashR:150, effect:'freeze', effectVal:2.0, hidden:true },
+    noishin:   { name:'뇌신', role:'HIDDEN', dmg:45, spd:2.5, range:250, color:'#ffaa00', splash:false, effect:'chain', effectVal:4, hidden:true },
+    geumgang:  { name:'금강', role:'HIDDEN', dmg:100, spd:0.3, range:180, color:'#ffdd44', splash:true, splashR:200, effect:'stun', effectVal:1.5, hidden:true },
+    hwaryong:  { name:'화룡', role:'HIDDEN', dmg:70, spd:1.0, range:350, color:'#ff4400', splash:false, effect:'burn', effectVal:15, hidden:true },
+    yuryeong:  { name:'유령', role:'HIDDEN', dmg:35, spd:3.0, range:400, color:'#aa66ff', splash:false, effect:'curse', effectVal:0.25, hidden:true },
+};
+
+// Hidden combo recipes
+const HIDDEN_RECIPES = [
+    { a: 'archer', b: 'mage',      result: 'shingoong', name: '신궁', desc: '궁수 ★★★ + 마법사 ★★★', effectDesc: '관통 화살 - 적 3마리까지 관통' },
+    { a: 'cannon', b: 'frost',     result: 'bingpok',   name: '빙폭', desc: '대포 ★★★ + 얼음 ★★★', effectDesc: '범위 동결 폭발 - 2초간 범위 내 적 정지' },
+    { a: 'lightning', b: 'blade',  result: 'noishin',   name: '뇌신', desc: '번개 ★★★ + 검사 ★★★', effectDesc: '번개 연쇄 - 최대 4마리에게 연쇄 데미지' },
+    { a: 'gunner',    b: 'cannon', result: 'geumgang',  name: '금강', desc: '기관총 ★★★ + 대포 ★★★', effectDesc: '충격파 - 범위 스턴 1.5초' },
+    { a: 'dragon',    b: 'mine',   result: 'hwaryong',  name: '화룡', desc: '드래곤 ★★★ + 광산 ★★★', effectDesc: '화염숨결 - 초당 15 화상 데미지' },
+    { a: 'mage',      b: 'frost',  result: 'yuryeong',  name: '유령', desc: '마법사 ★★★ + 얼음 ★★★', effectDesc: '저주 - 적 받는 데미지 25% 증가' },
+];
+
+// Build summon pool keys (exclude hidden towers)
+const TOWER_KEYS = Object.keys(TOWER_DEFS).filter(function(k) { return !TOWER_DEFS[k].hidden; });
+const TOWER_WEIGHTS = TOWER_KEYS.map(function(k) { return TOWER_DEFS[k].weight || 1.0; });
+const TOTAL_WEIGHT = TOWER_WEIGHTS.reduce(function(a,b) { return a+b; }, 0);
+
+// ── Enemy Definitions ──
+const ENEMY_DEFS = {
+    normal: { name:'일반', hp:100, speed:1.0, reward:5, color:'#ffffff' },
+    fast:   { name:'질주', hp:50,  speed:2.0, reward:3, color:'#00ff00' },
+    tank:   { name:'중장갑', hp:400, speed:0.5, reward:15,color:'#ff4444' },
+    boss:   { name:'보스', hp:1500,speed:0.3, reward:100,color:'#ffdd00' },
+};
+
+// ══════════════════════════════════════════════════════════
+// PIXEL ART DEFINITIONS
+// ══════════════════════════════════════════════════════════
+
+const PIXEL_ART = {
+    archer: [
+        [0,0,0,1,1,0,0,0],
+        [0,0,1,1,1,0,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,2,1,1,1,1,0,0],
+        [0,0,0,1,0,0,1,1],
+        [0,0,1,0,1,0,0,1],
+        [0,1,0,0,0,1,0,0],
+        [0,1,0,0,0,1,0,0],
+    ],
+    blade: [
+        [0,0,0,1,0,0,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,0,2,1,2,0,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,0,1,1,1,0,0,0],
+        [0,0,1,0,1,0,0,0],
+        [0,1,1,0,1,1,0,0],
+    ],
+    gunner: [
+        [0,0,0,0,0,0,0,0],
+        [0,0,1,1,1,1,1,0],
+        [0,1,2,2,2,2,0,0],
+        [1,1,1,1,1,1,1,1],
+        [0,1,2,2,2,2,0,0],
+        [0,0,1,1,1,1,1,0],
+        [0,0,1,0,0,1,0,0],
+        [0,1,1,0,0,1,1,0],
+    ],
+    mage: [
+        [0,0,0,1,1,0,0,0],
+        [0,0,1,1,1,1,0,0],
+        [0,1,1,1,1,1,1,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,1,1,1,1,0,0],
+        [0,1,2,1,1,2,1,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,1,0,0,1,0,0],
+    ],
+    lightning: [
+        [0,0,0,1,1,0,0,0],
+        [0,0,1,1,0,0,0,0],
+        [0,1,1,1,1,1,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,1,1,0,0,0,0],
+        [0,1,1,0,0,0,0,0],
+        [1,1,1,1,0,0,0,0],
+        [0,0,1,0,0,0,0,0],
+    ],
+    cannon: [
+        [0,0,1,1,1,1,0,0],
+        [0,0,1,2,2,1,0,0],
+        [0,0,1,2,2,1,0,0],
+        [0,0,1,1,1,1,0,0],
+        [0,1,1,1,1,1,1,0],
+        [1,1,2,2,2,2,1,1],
+        [0,1,0,0,0,0,1,0],
+        [1,1,1,0,0,1,1,1],
+    ],
+    frost: [
+        [0,0,0,1,0,0,0,0],
+        [0,1,0,1,0,1,0,0],
+        [0,0,1,1,1,0,0,0],
+        [1,1,1,2,1,1,1,0],
+        [0,0,1,1,1,0,0,0],
+        [0,1,0,1,0,1,0,0],
+        [0,0,0,1,0,0,0,0],
+        [0,0,0,0,0,0,0,0],
+    ],
+    mine: [
+        [0,1,1,1,1,1,1,0],
+        [1,2,2,2,2,2,2,1],
+        [1,2,1,1,1,1,2,1],
+        [1,2,1,0,0,1,2,1],
+        [1,2,1,1,1,1,2,1],
+        [1,1,1,1,1,1,1,1],
+        [0,1,0,1,0,1,0,0],
+        [0,0,1,0,1,0,0,0],
+    ],
+    dragon: [
+        [0,1,0,0,0,0,1,0],
+        [1,1,0,1,1,0,1,1],
+        [1,0,1,1,1,1,0,1],
+        [0,0,1,2,2,1,0,0],
+        [0,0,1,1,1,1,0,0],
+        [0,0,0,1,1,0,0,0],
+        [0,0,1,0,0,1,0,0],
+        [0,1,0,0,0,0,1,0],
+    ],
+    // Hidden characters
+    shingoong: [
+        [0,0,0,1,1,0,0,0,0,0],
+        [0,0,1,2,1,0,0,0,0,0],
+        [0,0,0,1,0,0,0,0,0,0],
+        [0,1,1,1,1,1,0,0,0,0],
+        [1,0,0,1,0,0,1,1,1,1],
+        [0,0,0,1,0,0,0,1,0,1],
+        [0,0,1,0,1,0,0,0,0,0],
+        [0,1,0,0,0,1,0,0,0,0],
+        [0,1,0,0,0,1,0,0,0,0],
+        [1,1,0,0,0,1,1,0,0,0],
+    ],
+    bingpok: [
+        [0,0,0,1,1,1,0,0,0,0],
+        [0,0,1,2,2,2,1,0,0,0],
+        [0,1,2,1,1,2,1,1,0,0],
+        [0,1,2,1,1,2,2,1,0,0],
+        [1,1,1,1,1,1,1,1,1,0],
+        [0,1,2,2,2,2,2,1,0,0],
+        [0,0,1,1,1,1,1,0,0,0],
+        [0,0,1,0,0,0,1,0,0,0],
+        [0,1,1,0,0,0,1,1,0,0],
+        [1,1,0,0,0,0,0,1,1,0],
+    ],
+    noishin: [
+        [0,0,0,0,1,0,0,0,0,0],
+        [0,0,0,1,1,0,0,0,0,0],
+        [0,0,0,1,0,0,0,0,0,0],
+        [0,1,2,1,2,1,0,0,0,0],
+        [0,0,0,1,0,0,1,1,0,0],
+        [0,0,1,1,1,0,0,1,1,0],
+        [0,1,2,1,2,1,0,0,0,0],
+        [0,0,1,0,1,0,0,0,0,0],
+        [0,1,0,0,0,1,0,0,0,0],
+        [1,1,0,0,0,1,1,0,0,0],
+    ],
+    geumgang: [
+        [0,0,0,1,1,1,1,0,0,0],
+        [0,0,1,2,2,2,2,1,0,0],
+        [0,1,2,1,1,1,1,2,1,0],
+        [1,2,1,1,2,2,1,1,2,1],
+        [1,2,1,2,1,1,2,1,2,1],
+        [1,2,1,1,2,2,1,1,2,1],
+        [0,1,2,1,1,1,1,2,1,0],
+        [0,0,1,2,2,2,2,1,0,0],
+        [0,0,0,1,1,1,1,0,0,0],
+        [0,0,0,0,1,1,0,0,0,0],
+    ],
+    hwaryong: [
+        [0,0,1,1,0,0,1,1,0,0],
+        [0,1,2,2,1,1,2,2,1,0],
+        [1,2,1,1,2,2,1,1,2,1],
+        [1,1,1,2,1,1,2,1,1,1],
+        [0,1,1,1,1,1,1,1,1,0],
+        [0,0,1,2,2,2,2,1,0,0],
+        [0,0,0,1,1,1,1,0,0,0],
+        [0,0,1,2,0,0,2,1,0,0],
+        [0,1,0,0,0,0,0,0,1,0],
+        [1,0,0,0,0,0,0,0,0,1],
+    ],
+    yuryeong: [
+        [0,0,0,1,1,1,0,0,0,0],
+        [0,0,1,2,2,2,1,0,0,0],
+        [0,1,2,1,2,1,2,1,0,0],
+        [0,1,2,2,2,2,2,1,0,0],
+        [0,0,1,2,2,2,1,0,0,0],
+        [0,0,1,1,2,1,1,0,0,0],
+        [0,1,2,1,2,1,2,1,0,0],
+        [1,2,0,1,2,1,0,2,1,0],
+        [0,1,0,0,1,0,0,1,0,0],
+        [0,0,1,0,0,0,1,0,0,0],
+    ],
+};
+
+function drawPixelArt(ctx, pixels, x, y, pixelSize, color) {
+    // Parse color to get RGB
+    let r = parseInt(color.slice(1,3),16);
+    let g = parseInt(color.slice(3,5),16);
+    let b = parseInt(color.slice(5,7),16);
+    let darkR = Math.floor(r * 0.5);
+    let darkG = Math.floor(g * 0.5);
+    let darkB = Math.floor(b * 0.5);
+
+    let rows = pixels.length;
+    let cols = pixels[0].length;
+    let totalW = cols * pixelSize;
+    let totalH = rows * pixelSize;
+    let startX = x - totalW / 2;
+    let startY = y - totalH / 2;
+
+    for (let py = 0; py < rows; py++) {
+        for (let px = 0; px < cols; px++) {
+            let val = pixels[py][px];
+            if (val === 0) continue;
+            if (val === 1) {
+                ctx.fillStyle = color;
+            } else if (val === 2) {
+                ctx.fillStyle = 'rgb(' + darkR + ',' + darkG + ',' + darkB + ')';
+            }
+            ctx.fillRect(startX + px * pixelSize, startY + py * pixelSize, pixelSize, pixelSize);
+        }
+    }
+}
+
+// ── Game State ──
+let grid = [];
+let enemies = [];
+let projectiles = [];
+let particles = [];
+let sp = 100;
+let hp = 5;
+let wave = 0;
+let toastTimeout = null;
+
+function showToast(msg, duration) {
+    duration = duration || 1500;
+    let el = document.getElementById('toast');
+    el.textContent = msg;
+    el.style.opacity = '1';
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(function() { el.style.opacity = '0'; }, duration);
+}
+
+let waveActive = false;
+let enemiesToSpawn = [];
+let spawnTimer = 0;
+let gameOver = false;
+let selectedCell = null;
+let dragFrom = null;
+let mouseX = 0, mouseY = 0;
+let spAccum = 0;
+let bonusSP = 0;
+let lastTime = 0;
+
+// ── Init Grid ──
+function initGrid() {
+    grid = [];
+    for (let x = 0; x < COLS; x++) {
+        grid[x] = [];
+        for (let y = 0; y < ROWS; y++) {
+            grid[x][y] = null;
+        }
+    }
+    updateRecipePanel();
+}
+
+// ── Zone Detection (상/하 분할) ──
+// Row 0,1 = P1 (위), Row 2 = Lane, Row 3,4 = P2 (아래)
+function getZone(x, y) {
+    if (y === LANE_ROW) return 'LANE';
+    if (y < LANE_ROW) return 'P1';   // Row 0,1
+    return 'P2';                       // Row 3,4
+}
+function getZoneColor(x, y) {
+    if (y === LANE_ROW) return '#4400aa';
+    if (y < LANE_ROW) return '#00ffff';  // P1 = cyan
+    return '#ff00ff';                     // P2 = magenta
+}
+
+// ── Player Zone Check (상/하) ──
+function canPlayerPlaceInCell(playerRole, gx, gy) {
+    if (gy === LANE_ROW) return false;
+    // Solo: P1 영역만 (위쪽)
+    if (!isMultiplayer) {
+        return gy < LANE_ROW; // Row 0,1 only
+    }
+    if (playerRole === 'P1') {
+        return gy < LANE_ROW;  // Row 0,1
+    } else {
+        return gy > LANE_ROW;  // Row 3,4
+    }
+}
+
+// ── Grid <-> World ──
+function gridToWorld(gx, gy) {
+    return { x: GRID_X + gx * CELL_W + CELL_W/2, y: GRID_Y + gy * CELL_H + CELL_H/2 };
+}
+function worldToGrid(wx, wy) {
+    let gx = Math.floor((wx - GRID_X) / CELL_W);
+    let gy = Math.floor((wy - GRID_Y) / CELL_H);
+    if (gx < 0 || gx >= COLS || gy < 0 || gy >= ROWS) return null;
+    return { x: gx, y: gy };
+}
+
+// ── Random Tower (skip hidden) ──
+function randomTowerType() {
+    let roll = Math.random() * TOTAL_WEIGHT;
+    let cum = 0;
+    for (let i = 0; i < TOWER_KEYS.length; i++) {
+        cum += TOWER_WEIGHTS[i];
+        if (roll <= cum) return TOWER_KEYS[i];
+    }
+    return TOWER_KEYS[TOWER_KEYS.length - 1];
+}
+
+// ── Summon (called by button click or keyboard) ──
+function summonTower() {
+    if (gameOver) return;
+    if (isMultiplayer && !isHost) {
+        // Guest: send input to host
+        sendInput({ type: 'summon' });
+        return;
+    }
+    // Host or solo: determine player role
+    let playerRole = 'P1'; // host is always P1
+    summonTowerForPlayer(playerRole);
+}
+
+function summonTowerForPlayer(playerRole) {
+    if (gameOver) return;
+    if (sp < SUMMON_COST) {
+        if (playerRole === 'P1' || !isMultiplayer) {
+            showToast('에너지가 부족합니다 (' + SUMMON_COST + ' 필요)');
+        } else if (conn && conn.open) {
+            conn.send({ type: 'toast', msg: '에너지가 부족합니다 (' + SUMMON_COST + ' 필요)', duration: 1500 });
+        }
+        return;
+    }
+    // Find empty cell in player's zone
+    let empty = null;
+    for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+            if (y === LANE_ROW) continue;
+            if (!grid[x][y] && canPlayerPlaceInCell(playerRole, x, y)) {
+                empty = {x: x, y: y};
+                break;
+            }
+        }
+        if (empty) break;
+    }
+    if (!empty) {
+        let msg = '빈 칸이 없습니다! 합성으로 자리를 만드세요';
+        if (playerRole === 'P1' || !isMultiplayer) {
+            showToast(msg);
+        } else if (conn && conn.open) {
+            conn.send({ type: 'toast', msg: msg, duration: 1500 });
+        }
+        return;
+    }
+    sp -= SUMMON_COST;
+    let type = randomTowerType();
+    let def = TOWER_DEFS[type];
+    grid[empty.x][empty.y] = {
+        type: type, grade: 1, level: 1, attackTimer: 0,
+        def: def, effectiveDmg: def.dmg, effectiveSpd: def.spd
+    };
+    spawnParticle(gridToWorld(empty.x, empty.y), '#ffffff', 10);
+    updateRecipePanel();
+}
+
+// ── Hidden Recipe Check ──
+function findHiddenRecipe(typeA, typeB) {
+    for (let i = 0; i < HIDDEN_RECIPES.length; i++) {
+        let r = HIDDEN_RECIPES[i];
+        if ((typeA === r.a && typeB === r.b) || (typeA === r.b && typeB === r.a)) {
+            return r;
+        }
+    }
+    return null;
+}
+
+// ── Merge ──
+function canMerge(a, b) {
+    if (!a || !b) return false;
+    if (a.type !== b.type) return false;
+    if (a.grade !== b.grade) return false;
+    // Same type same grade: allow if grade < MAX_GRADE
+    if (a.grade < MAX_GRADE) return true;
+    // At max grade (3★), no same-type merge allowed
+    // (hidden combos are different types, done via recipe panel)
+    return false;
+}
+
+function moveTower(fromX, fromY, toX, toY, playerRole) {
+    let t = grid[fromX][fromY];
+    if (!t) return false;
+    if (grid[toX][toY]) return false;
+    if (toY === LANE_ROW) return false;
+    // 존 체크: 자기 영역 내에서만 이동 가능
+    playerRole = playerRole || 'P1';
+    if (!canPlayerPlaceInCell(playerRole, toX, toY)) return false;
+    if (!canPlayerPlaceInCell(playerRole, fromX, fromY)) return false; // 남의 타워도 못 움직임
+    grid[toX][toY] = t;
+    grid[fromX][fromY] = null;
+    spawnParticle(gridToWorld(toX, toY), '#ffffff', 5);
+    updateRecipePanel();
+    return true;
+}
+
+function sellTower(gx, gy, playerRole) {
+    let t = grid[gx][gy];
+    if (!t) return false;
+    if (gy === LANE_ROW) return false;
+    playerRole = playerRole || 'P1';
+    if (!canPlayerPlaceInCell(playerRole, gx, gy)) return false;
+    // 환급: 소환비용 * 등급 * 50% + 업그레이드 비용 * 50%
+    let upgradeCostSpent = getUpgradeCostSpent(t.level || 1);
+    let refund = Math.floor(SUMMON_COST * t.grade * 0.5 + upgradeCostSpent * 0.5);
+    sp += refund;
+    spawnParticle(gridToWorld(gx, gy), '#ffff00', 10);
+    showToast(t.def.name + ' 판매! +' + refund + ' 에너지', 1200);
+    grid[gx][gy] = null;
+    if (selectedCell && selectedCell.x === gx && selectedCell.y === gy) selectedCell = null;
+    if (typeof updateRecipePanel === 'function') updateRecipePanel();
+    return true;
+}
+
+// ── Tower Upgrade System ──
+const UPGRADE_COSTS = [0, 30, 60, 120]; // cost to reach level 2, 3, 4
+const MAX_TOWER_LEVEL = 4;
+
+function getUpgradeCost(currentLevel) {
+    if (currentLevel >= MAX_TOWER_LEVEL) return -1;
+    return UPGRADE_COSTS[currentLevel]; // level 1 costs 30, level 2 costs 60, etc.
+}
+
+function getUpgradeCostSpent(level) {
+    // Total upgrade cost spent to reach this level
+    let total = 0;
+    for (let i = 1; i < level; i++) total += UPGRADE_COSTS[i];
+    return total;
+}
+
+function upgradeTower(gx, gy, playerRole) {
+    let t = grid[gx][gy];
+    if (!t) return false;
+    if (t.level >= MAX_TOWER_LEVEL) { showToast('최대 레벨입니다!'); return false; }
+    playerRole = playerRole || 'P1';
+    if (!canPlayerPlaceInCell(playerRole, gx, gy)) return false;
+    let cost = getUpgradeCost(t.level);
+    let discount = getRelicBonus('upgDiscount');
+    if (discount > 0) cost = Math.max(1, Math.floor(cost * (1 - discount)));
+    if (sp < cost) { showToast('에너지가 부족합니다 (' + cost + ' 필요)'); return false; }
+    sp -= cost;
+    t.level++;
+    spawnParticle(gridToWorld(gx, gy), '#00ff88', 12);
+    showToast(t.def.name + ' Lv.' + t.level + ' 업그레이드!', 1200);
+    return true;
+}
+
+let upgradePopup = null; // { gx, gy } or null
+
+function showUpgradePopup(gx, gy) {
+    let t = grid[gx][gy];
+    if (!t) return;
+    upgradePopup = { gx: gx, gy: gy };
+    selectedCell = { x: gx, y: gy };
+}
+
+function closeUpgradePopup() {
+    upgradePopup = null;
+    window._upgradeBtnBounds = null;
+    window._upgradeCloseBtnBounds = null;
+}
+
+function swapTowers(fromX, fromY, toX, toY, playerRole) {
+    let a = grid[fromX][fromY];
+    let b = grid[toX][toY];
+    if (!a || !b) return false;
+    if (fromY === LANE_ROW || toY === LANE_ROW) return false;
+    playerRole = playerRole || 'P1';
+    if (!canPlayerPlaceInCell(playerRole, fromX, fromY)) return false;
+    if (!canPlayerPlaceInCell(playerRole, toX, toY)) return false;
+    grid[fromX][fromY] = b;
+    grid[toX][toY] = a;
+    spawnParticle(gridToWorld(fromX, fromY), '#aaaaff', 4);
+    spawnParticle(gridToWorld(toX, toY), '#aaaaff', 4);
+    showToast('위치 교환!', 800);
+    updateRecipePanel();
+    return true;
+}
+
+function doMerge(fromX, fromY, toX, toY) {
+    if (isMultiplayer && !isHost) {
+        // Guest: send merge input to host
+        sendInput({ type: 'merge', from: {x: fromX, y: fromY}, to: {x: toX, y: toY} });
+        return true; // Assume it will work, host will update state
+    }
+    // Determine player role from drag origin
+    let playerRole = 'P1'; // host always P1 when calling directly
+    return doMergeForPlayer(fromX, fromY, toX, toY, playerRole);
+}
+
+function doMergeForPlayer(fromX, fromY, toX, toY, playerRole) {
+    let a = grid[fromX][fromY];
+    let b = grid[toX][toY];
+    if (!a || !b) return false;
+
+    // 3★ + 3★ 히든 레시피 드래그 합성 시도
+    if (a.grade === 3 && b.grade === 3 && a.type !== b.type) {
+        let recipe = findHiddenRecipe(a.type, b.type);
+        if (recipe) {
+            let resultDef = TOWER_DEFS[recipe.result];
+            grid[fromX][fromY] = null;
+            grid[toX][toY] = {
+                type: recipe.result, grade: 4, level: 1, attackTimer: 0,
+                def: resultDef, effectiveDmg: resultDef.dmg, effectiveSpd: resultDef.spd
+            };
+            let pos = gridToWorld(toX, toY);
+            spawnParticle(pos, resultDef.color, 40);
+            spawnParticle(pos, '#ffffff', 25);
+            spawnParticle(gridToWorld(fromX, fromY), '#ff00ff', 20);
+            showToast('히든 캐릭터 ' + recipe.name + ' 조합 성공!', 3000);
+            updateRecipePanel();
+            return true;
+        }
+    }
+
+    if (!canMerge(a, b)) {
+        return false; // swap으로 처리됨 (mouseup에서)
+    }
+    // Check zone ownership (멀티에서 상대 영역 타워 합성 차단)
+    if (!canPlayerPlaceInCell(playerRole, fromX, fromY) || !canPlayerPlaceInCell(playerRole, toX, toY)) {
+        let msg = '자신의 영역에서만 합성할 수 있습니다';
+        if (playerRole === 'P1' || !isMultiplayer) showToast(msg);
+        else if (conn && conn.open) conn.send({ type: 'toast', msg: msg, duration: 1500 });
+        return false;
+    }
+    let newGrade = a.grade + 1;
+    // SAME TYPE - no random type change
+    let newType = a.type;
+    let newDef = TOWER_DEFS[newType];
+    grid[toX][toY] = {
+        type: newType, grade: newGrade, level: 1, attackTimer: 0,
+        def: newDef,
+        effectiveDmg: newDef.dmg * Math.pow(1.5, newGrade - 1),
+        effectiveSpd: newDef.spd * (1 + (newGrade - 1) * 0.1)
+    };
+    grid[fromX][fromY] = null;
+    let pos = gridToWorld(toX, toY);
+    spawnParticle(pos, '#ffff00', 20);
+    spawnParticle(pos, newDef.color, 15);
+    updateRecipePanel();
+    return true;
+}
+
+// ── Hidden Combo System ──
+function playerHasTowerOfType(towerType, grade, playerRole) {
+    for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < ROWS; y++) {
+            if (!grid[x][y]) continue;
+            if (grid[x][y].type === towerType && grid[x][y].grade === grade) {
+                if (!isMultiplayer || canPlayerPlaceInCell(playerRole, x, y)) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+function findTowerOnGrid(towerType, grade, playerRole, excludePos) {
+    for (let x = 0; x < COLS; x++) {
+        for (let y = 0; y < ROWS; y++) {
+            if (!grid[x][y]) continue;
+            if (grid[x][y].type === towerType && grid[x][y].grade === grade) {
+                if (excludePos && excludePos.x === x && excludePos.y === y) continue;
+                if (!isMultiplayer || canPlayerPlaceInCell(playerRole, x, y)) {
+                    return { x: x, y: y };
+                }
+            }
+        }
+    }
+    return null;
+}
+
+function canDoHiddenCombo(recipeIdx, playerRole) {
+    let recipe = HIDDEN_RECIPES[recipeIdx];
+    if (!recipe) return false;
+    playerRole = playerRole || 'P1';
+    let hasA = playerHasTowerOfType(recipe.a, 3, playerRole);
+    let hasB = playerHasTowerOfType(recipe.b, 3, playerRole);
+    return hasA && hasB;
+}
+
+function performHiddenCombo(recipeIdx, playerRole) {
+    let recipe = HIDDEN_RECIPES[recipeIdx];
+    if (!recipe) return;
+    playerRole = playerRole || 'P1';
+
+    let posA = findTowerOnGrid(recipe.a, 3, playerRole, null);
+    if (!posA) return;
+    let posB = findTowerOnGrid(recipe.b, 3, playerRole, posA);
+    if (!posB) return;
+
+    // Remove both towers
+    grid[posA.x][posA.y] = null;
+    grid[posB.x][posB.y] = null;
+
+    // Create hidden character at first tower's position
+    let resultDef = TOWER_DEFS[recipe.result];
+    grid[posA.x][posA.y] = {
+        type: recipe.result, grade: 4, level: 1, attackTimer: 0,
+        def: resultDef,
+        effectiveDmg: resultDef.dmg,
+        effectiveSpd: resultDef.spd
+    };
+
+    // Big particle explosion
+    let pos = gridToWorld(posA.x, posA.y);
+    spawnParticle(pos, resultDef.color, 40);
+    spawnParticle(pos, '#ffffff', 25);
+    spawnParticle(pos, '#ffff00', 20);
+    let posB2 = gridToWorld(posB.x, posB.y);
+    spawnParticle(posB2, '#ff00ff', 20);
+
+    showToast('히든 캐릭터 ' + recipe.name + ' 조합 성공!', 3000);
+    updateRecipePanel();
+}
+
+function onComboClick(recipeIdx) {
+    if (gameOver) return;
+    if (isMultiplayer && !isHost) {
+        sendInput({ type: 'hiddenCombo', recipeIdx: recipeIdx });
+        return;
+    }
+    let playerRole = 'P1';
+    // 디버깅: 3★ 타워 위치 확인
+    let found = [];
+    for(let x=0;x<COLS;x++) for(let y=0;y<ROWS;y++) {
+        if(grid[x][y] && grid[x][y].grade === 3) found.push(grid[x][y].type+'@('+x+','+y+')');
+    }
+    console.log('조합 시도: recipe', recipeIdx, '3★ 타워들:', found.join(', '));
+    if (!canDoHiddenCombo(recipeIdx, playerRole)) {
+        showToast('재료가 부족합니다! 3★ 타워 2개가 필요합니다');
+        return;
+    }
+    performHiddenCombo(recipeIdx, playerRole);
+    showToast('히든 조합 성공!', 2000);
+}
+
+// ── Recipe Panel Update ──
+function updateRecipePanel() {
+    let container = document.getElementById('recipeCards');
+    if (!container) return;
+    let playerRole = isMultiplayer && !isHost ? 'P2' : 'P1';
+    let html = '';
+    for (let i = 0; i < HIDDEN_RECIPES.length; i++) {
+        let recipe = HIDDEN_RECIPES[i];
+        let defA = TOWER_DEFS[recipe.a];
+        let defB = TOWER_DEFS[recipe.b];
+        let resultDef = TOWER_DEFS[recipe.result];
+        let canCombo = canDoHiddenCombo(i, playerRole);
+
+        html += '<div class="recipe-card" style="border-color:' + (canCombo ? resultDef.color : '#2a2a6e') + (canCombo ? ';box-shadow:0 0 8px ' + resultDef.color + '44' : '') + '">';
+        html += '<div class="recipe-dots">';
+        html += '<span class="dot" style="background:' + defA.color + '" title="' + defA.name + '"></span>';
+        html += '<span class="recipe-plus">+</span>';
+        html += '<span class="dot" style="background:' + defB.color + '" title="' + defB.name + '"></span>';
+        html += '<span class="recipe-arrow">\u2192</span>';
+        html += '</div>';
+        html += '<span class="recipe-result-name" style="color:' + resultDef.color + '">' + recipe.name + '</span>';
+        html += '<span class="recipe-status">';
+        if (canCombo) {
+            html += '<button class="combo-btn" data-recipe="' + i + '">\uC870\uD569</button>';
+        } else {
+            html += '<span class="missing">\uC7AC\uB8CC \uBD80\uC871</span>';
+        }
+        html += '</span>';
+        html += '<div class="recipe-tooltip">' + recipe.desc + '<br><span style="color:' + resultDef.color + '">' + recipe.effectDesc + '</span></div>';
+        html += '</div>';
+    }
+    container.innerHTML = html;
+
+    // 조합 버튼에 직접 click 리스너 부착
+    container.querySelectorAll('.combo-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            let idx = parseInt(this.getAttribute('data-recipe'));
+            if (!isNaN(idx)) onComboClick(idx);
+        });
+        // 터치 디바이스 지원
+        btn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            let idx = parseInt(this.getAttribute('data-recipe'));
+            if (!isNaN(idx)) onComboClick(idx);
+        });
+    });
+
+    // 시너지 레시피 패널 업데이트 - compact with progress pips
+    let synergyDiv = document.getElementById('synergyRecipes');
+    if (synergyDiv) {
+        let roleKR = {PHYSICAL:'\uBB3C\uB9AC',MAGIC:'\uB9C8\uBC95',SPLASH:'\uBC94\uC704',SUPPORT:'\uC9C0\uC6D0',ECONOMY:'\uACBD\uC81C',SPECIAL:'\uD2B9\uC218',LEGENDARY:'\uC804\uC124'};
+        let roleColors = {PHYSICAL:'#00ffff',MAGIC:'#ff00ff',SPLASH:'#ff8800',SUPPORT:'#88ccff',ECONOMY:'#ffff00',SPECIAL:'#ff9900',LEGENDARY:'#ff1100'};
+        let synergies = calcSynergies();
+        let roles = {};
+        for (let x=0;x<COLS;x++) for (let y=0;y<ROWS;y++) {
+            let t = grid[x][y];
+            if (t && t.def.role !== 'HIDDEN') roles[t.def.role] = (roles[t.def.role]||0) + 1;
+        }
+        let shtml = '';
+        let allRoles = ['PHYSICAL','MAGIC','SPLASH','SUPPORT','ECONOMY','LEGENDARY'];
+        for (let r of allRoles) {
+            let count = roles[r] || 0;
+            let bonus = synergies[r];
+            let color = roleColors[r] || '#888';
+            let active = bonus ? true : false;
+            let thresholds = [2, 3, 4];
+            let synDesc = '같은 유형 타워를 배치하면 보너스!\\n2개: +10%  3개: +25%  4개+: +40%\\n현재 ' + (roleKR[r]||r) + ' ' + count + '개' + (active ? ' → +' + Math.round(bonus*100) + '% 공격력' : '');
+            shtml += '<div class="synergy-row' + (active ? ' active' : '') + '"' + (active ? ' style="box-shadow:inset 0 0 12px ' + color + '15"' : '') + '>';
+            shtml += '<span class="syn-dot" style="background:' + color + ';opacity:' + (active ? '1' : '0.3') + '"></span>';
+            shtml += '<span class="syn-name" style="color:' + (active ? color : '#555') + '">' + (roleKR[r]||r) + '</span>';
+            shtml += '<span class="syn-pips">';
+            for (let th = 0; th < thresholds.length; th++) {
+                let filled = count >= thresholds[th];
+                shtml += '<span class="pip ' + (filled ? 'filled' : 'empty') + '" style="background:' + (filled ? color : 'transparent') + ';border-color:' + color + '"></span>';
+            }
+            shtml += '</span>';
+            if (active) {
+                shtml += '<span class="syn-bonus" style="color:#0f0">+' + Math.round(bonus*100) + '%</span>';
+            } else {
+                shtml += '<span class="syn-bonus" style="color:#333">' + count + '/' + (count < 2 ? '2' : count < 3 ? '3' : '4') + '</span>';
+            }
+            shtml += '<div class="synergy-tooltip" style="border-color:' + color + ';box-shadow:0 0 20px ' + color + '66">' + synDesc.replace(/\\n/g, '<br>') + '</div>';
+            shtml += '</div>';
+        }
+        synergyDiv.innerHTML = shtml;
+    }
+}
+
+// ── Synergy ──
+function calcSynergies() {
+    let roles = {};
+    for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) {
+        let t = grid[x][y];
+        if (t && t.def.role !== 'HIDDEN') roles[t.def.role] = (roles[t.def.role] || 0) + 1;
+    }
+    let bonuses = {};
+    for (let r in roles) {
+        let c = roles[r];
+        if (c >= 4) bonuses[r] = 0.40;
+        else if (c >= 3) bonuses[r] = 0.25;
+        else if (c >= 2) bonuses[r] = 0.10;
+    }
+    return bonuses;
+}
+
+function updateBonusSP() {
+    bonusSP = 0;
+    for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) {
+        let t = grid[x][y];
+        if (t && t.def.effect === 'sp_gen') bonusSP += t.def.effectVal * t.grade;
+    }
+}
+
+// ── Waves ──
+function getWaveComp(w) {
+    // Stage mode: use stage's enemy types and boss on last wave
+    if (stageMode && currentStage) {
+        let total = 5 + Math.floor(w / 2);
+        let comp = [];
+        let isLastWave = w >= currentStage.waves;
+        if (isLastWave) { comp.push('boss'); total--; }
+        let available = currentStage.enemies;
+        for (let i = 0; i < total; i++) {
+            comp.push(available[Math.floor(Math.random() * available.length)]);
+        }
+        // Shuffle
+        for (let i = comp.length - 1; i > 0; i--) {
+            let j = Math.floor(Math.random() * (i + 1));
+            let tmp = comp[i]; comp[i] = comp[j]; comp[j] = tmp;
+        }
+        return comp;
+    }
+    // Legacy infinite mode
+    let total = 5 + Math.floor(w / 2);
+    let comp = [];
+    let isBoss = w % 5 === 0 && w > 0;
+    if (isBoss) { comp.push('boss'); total--; }
+    if (w >= 11) {
+        let tanks = Math.max(1, Math.floor(total * 0.15));
+        let fasts = Math.max(1, Math.floor(total * 0.25));
+        for (let i = 0; i < tanks; i++) comp.push('tank');
+        for (let i = 0; i < fasts; i++) comp.push('fast');
+        for (let i = 0; i < total - tanks - fasts; i++) comp.push('normal');
+    } else if (w >= 6) {
+        let fasts = Math.max(1, Math.floor(total * 0.3));
+        for (let i = 0; i < fasts; i++) comp.push('fast');
+        for (let i = 0; i < total - fasts; i++) comp.push('normal');
+    } else {
+        for (let i = 0; i < total; i++) comp.push('normal');
+    }
+    for (let i = comp.length - 1; i > 0; i--) {
+        let j = Math.floor(Math.random() * (i + 1));
+        let tmp = comp[i]; comp[i] = comp[j]; comp[j] = tmp;
+    }
+    return comp;
+}
+
+function startNextWave() {
+    if (waveActive || gameOver) return;
+    if (isMultiplayer && !isHost) return; // guest cannot start waves
+    // Don't start wave beyond stage max
+    if (stageMode && currentStage && wave >= currentStage.waves) return;
+    wave++;
+    wavePhaseIndex = 1;
+    wavePhaseTimer = 60;
+    wavePhaseSpawnTimer = 0;
+    wavePhaseSpawnRate = Math.max(0.3, 1.0 - (wavePhaseIndex - 1) * 0.1);
+    overflowTimer = 0;
+    enemiesToSpawn = getWaveComp(wave);
+    spawnTimer = 0;
+    waveActive = true;
+    stageAutoWaveTimer = 0; // reset auto timer when wave starts manually
+}
+
+function advanceToNextWavePhase() {
+    if (!stageMode || !currentStage) return;
+    if (wave >= currentStage.waves) {
+        // Last wave phase done - spawn boss and stop advancing
+        spawnEnemy('boss');
+        showToast('보스 출현!', 2000);
+        return;
+    }
+    wave++;
+    wavePhaseIndex++;
+    wavePhaseSpawnRate = Math.max(0.3, 1.0 - (wavePhaseIndex - 1) * 0.1);
+    enemiesToSpawn = getWaveComp(wave);
+    spawnTimer = 0;
+    let waveReward = 20 + wave * 5;
+    sp += waveReward;
+    showToast('웨이브 ' + wave + ' 시작! +' + waveReward + ' 에너지', 1500);
+}
+
+function getWavePhaseEnemyType() {
+    if (stageMode && currentStage) {
+        let available = currentStage.enemies;
+        return available[Math.floor(Math.random() * available.length)];
+    }
+    // Legacy
+    if (wave >= 11) {
+        let r = Math.random();
+        if (r < 0.15) return 'tank';
+        if (r < 0.40) return 'fast';
+        return 'normal';
+    } else if (wave >= 6) {
+        return Math.random() < 0.3 ? 'fast' : 'normal';
+    }
+    return 'normal';
+}
+
+function spawnEnemy(type) {
+    let def = ENEMY_DEFS[type];
+    let laneY = GRID_Y + LANE_ROW * CELL_H + CELL_H / 2;
+    let hpScale = 1.0;
+    let speedScale = 1.0;
+    if (stageMode && currentStage) {
+        hpScale = currentStage.hpScale;
+        speedScale = currentStage.speedScale;
+    }
+    let enemySlowRelic = getRelicBonus('enemySlow');
+    let finalHp = def.hp * (1 + wave * 0.2) * hpScale;
+    let finalSpeed = 60 * def.speed * (1 + wave * 0.015) * speedScale * (1 - enemySlowRelic);
+    enemies.push({
+        type: type, x: GRID_X - 30, y: laneY,
+        hp: finalHp,
+        maxHp: finalHp,
+        speed: finalSpeed,
+        reward: def.reward, color: def.color,
+        slowTimer: 0, slowFactor: 1.0
+    });
+}
+
+// ── Particles ──
+function spawnParticle(pos, color, count) {
+    for (let i = 0; i < count; i++) {
+        let angle = Math.random() * Math.PI * 2;
+        let speed = 50 + Math.random() * 150;
+        particles.push({
+            x: pos.x, y: pos.y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 0.3 + Math.random() * 0.4,
+            maxLife: 0.3 + Math.random() * 0.4,
+            color: color, size: 2 + Math.random() * 3
+        });
+    }
+}
+
+// ── Projectiles ──
+let lightningFlashes = [];
+
+function spawnProjectile(from, to, dmg, color, splash, splashR, towerType) {
+    // Lightning: instant flash, no traveling projectile
+    if (towerType === 'lightning' || towerType === 'noishin') {
+        lightningFlashes.push({
+            x1: from.x, y1: from.y,
+            x2: to.x, y2: to.y,
+            life: 0.12,
+            color: color,
+            towerType: towerType
+        });
+        // Still need to apply damage
+        if (splash) {
+            for (let e of enemies) {
+                if (Math.hypot(e.x - to.x, e.y - to.y) <= splashR && e.hp > 0) {
+                    e.hp -= dmg * (e.curseMulti || 1.0);
+                }
+            }
+            spawnParticle({x:to.x, y:to.y}, color, 8);
+        } else {
+            let hit = null, minD = 30;
+            for (let e of enemies) {
+                let d = Math.hypot(e.x - to.x, e.y - to.y);
+                if (d < minD && e.hp > 0) { hit = e; minD = d; }
+            }
+            if (hit) hit.hp -= dmg * (hit.curseMulti || 1.0);
+        }
+        // Spawn electric spark particles
+        for (let i = 0; i < 6; i++) {
+            let angle = Math.random() * Math.PI * 2;
+            let spd = 40 + Math.random() * 80;
+            particles.push({
+                x: to.x, y: to.y,
+                vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd,
+                life: 0.15 + Math.random() * 0.2, maxLife: 0.35,
+                color: '#ffff88', size: 1.5 + Math.random() * 2
+            });
+        }
+        return;
+    }
+
+    projectiles.push({
+        x: from.x, y: from.y,
+        tx: to.x, ty: to.y,
+        dmg: dmg, color: color, splash: splash, splashR: splashR || 0,
+        speed: 500,
+        towerType: towerType || 'default',
+        trail: []
+    });
+}
+
+// ── Update (runs on host; guest skips logic) ──
+function update(dt) {
+    if (gameOver) return;
+    // Guest: only update particles and lightning flashes locally for smoothness
+    if (isMultiplayer && !isHost) {
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx * dt; p.y += p.vy * dt;
+            p.vx *= 0.95; p.vy *= 0.95;
+            p.life -= dt;
+            if (p.life <= 0) particles.splice(i, 1);
+        }
+        for (let lfi = lightningFlashes.length - 1; lfi >= 0; lfi--) {
+            lightningFlashes[lfi].life -= dt;
+            if (lightningFlashes[lfi].life <= 0) lightningFlashes.splice(lfi, 1);
+        }
+        return;
+    }
+
+    // === HOST / SOLO logic ===
+
+    // (Enemy spawning is now handled by wavePhaseSpawnTimer in the wave phase system below)
+
+    // Synergy
+    let synergies = calcSynergies();
+
+    // Tower attacks
+    for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) {
+        let t = grid[x][y];
+        if (!t || t.def.spd <= 0) continue;
+        t.attackTimer += dt;
+        let lvl = t.level || 1;
+        let spdRelicBonus = getRelicBonus('spd');
+        let interval = 1.0 / (t.def.spd * (1 + (Math.min(t.grade, 3) - 1) * 0.1) * (1 + (lvl - 1) * 0.15) * (1 + spdRelicBonus));
+        if (t.attackTimer >= interval) {
+            t.attackTimer -= interval;
+            let tPos = gridToWorld(x, y);
+            let rangeRelicBonus = getRelicBonus('range');
+            let range = t.def.range * (1 + (Math.min(t.grade, 3) - 1) * 0.05) * (1 + (lvl - 1) * 0.10) * (1 + rangeRelicBonus);
+            // Hidden towers get bonus range
+            if (t.def.hidden) range = t.def.range * (1 + (lvl - 1) * 0.10) * (1 + rangeRelicBonus);
+            let best = null, bestProg = -1;
+            for (let e of enemies) {
+                let dist = Math.hypot(e.x - tPos.x, e.y - tPos.y);
+                if (dist <= range && e.hp > 0 && e.x > bestProg) {
+                    best = e; bestProg = e.x;
+                }
+            }
+            if (best) {
+                let gradeForCalc = t.def.hidden ? 1 : t.grade;
+                let dmg = t.def.dmg * Math.pow(1.5, gradeForCalc - 1) * (1 + (lvl - 1) * 0.25);
+                // Hidden towers use their base dmg directly (already high)
+                if (t.def.hidden) dmg = t.def.dmg * (1 + (lvl - 1) * 0.25);
+                let role = t.def.role;
+                if (role !== 'HIDDEN' && synergies[role]) dmg *= (1 + synergies[role]);
+                // Relic bonuses
+                let dmgBonus = getRelicBonus('dmg');
+                if (dmgBonus > 0) dmg *= (1 + dmgBonus);
+                if (t.def.hidden) {
+                    let hiddenDmgBonus = getRelicBonus('hiddenDmg');
+                    if (hiddenDmgBonus > 0) dmg *= (1 + hiddenDmgBonus);
+                }
+                spawnProjectile(tPos, {x:best.x, y:best.y}, dmg, t.def.color, t.def.splash, t.def.splashR, t.type);
+                // Attack animation
+                t.attackAnim = 0.2;
+                if (t.def.effect === 'slow') {
+                    best.slowTimer = 2.0;
+                    best.slowFactor = 1.0 - t.def.effectVal;
+                }
+                // 광산: 공격 시 확률적 에너지 드롭
+                if (t.def.effect === 'energy_drop') {
+                    let chance = t.def.effectVal + (t.grade - 1) * 0.05 + getRelicBonus('mineDrop');
+                    if (Math.random() < chance) {
+                        let bonus = 3 + t.grade * 2;
+                        sp += bonus;
+                        spawnParticle(tPos, '#ffff00', 6);
+                        showToast('+' + bonus + ' 에너지!', 800);
+                    }
+                }
+                // Hidden: freeze effect (빙폭)
+                if (t.def.effect === 'freeze') {
+                    for (let e2 of enemies) {
+                        if (Math.hypot(e2.x - best.x, e2.y - best.y) <= t.def.splashR) {
+                            e2.slowTimer = t.def.effectVal;
+                            e2.slowFactor = 0;
+                        }
+                    }
+                }
+                // Hidden: chain effect (뇌신)
+                if (t.def.effect === 'chain') {
+                    let chainCount = t.def.effectVal;
+                    let chained = [best];
+                    let lastTarget = best;
+                    for (let ci = 0; ci < chainCount - 1; ci++) {
+                        let nextBest = null, nextDist = 200;
+                        for (let e2 of enemies) {
+                            if (chained.indexOf(e2) !== -1) continue;
+                            if (e2.hp <= 0) continue;
+                            let cd = Math.hypot(e2.x - lastTarget.x, e2.y - lastTarget.y);
+                            if (cd < nextDist) { nextBest = e2; nextDist = cd; }
+                        }
+                        if (nextBest) {
+                            chained.push(nextBest);
+                            nextBest.hp -= dmg * 0.7;
+                            spawnProjectile({x:lastTarget.x, y:lastTarget.y}, {x:nextBest.x, y:nextBest.y}, 0, t.def.color, false, 0);
+                            lastTarget = nextBest;
+                        }
+                    }
+                }
+                // Hidden: pierce (신궁)
+                if (t.def.effect === 'pierce') {
+                    let pierceCount = t.def.effectVal;
+                    let pierced = [best];
+                    let dx = best.x - tPos.x, dy = best.y - tPos.y;
+                    let angle = Math.atan2(dy, dx);
+                    for (let e2 of enemies) {
+                        if (pierced.length >= pierceCount) break;
+                        if (pierced.indexOf(e2) !== -1) continue;
+                        if (e2.hp <= 0) continue;
+                        let d2 = Math.hypot(e2.x - tPos.x, e2.y - tPos.y);
+                        if (d2 > range * 1.5) continue;
+                        let a2 = Math.atan2(e2.y - tPos.y, e2.x - tPos.x);
+                        if (Math.abs(a2 - angle) < 0.3) {
+                            pierced.push(e2);
+                            e2.hp -= dmg;
+                        }
+                    }
+                }
+                // Hidden: stun (금강)
+                if (t.def.effect === 'stun') {
+                    for (let e2 of enemies) {
+                        if (Math.hypot(e2.x - best.x, e2.y - best.y) <= (t.def.splashR || 200) && e2.hp > 0) {
+                            e2.slowTimer = t.def.effectVal;
+                            e2.slowFactor = 0; // 완전 정지
+                        }
+                    }
+                }
+                // Hidden: burn (화룡)
+                if (t.def.effect === 'burn') {
+                    if (!best.burnDmg || best.burnDmg < t.def.effectVal) {
+                        best.burnDmg = t.def.effectVal;
+                        best.burnTimer = 3.0;
+                    }
+                }
+                // Hidden: curse (유령)
+                if (t.def.effect === 'curse') {
+                    best.cursed = true;
+                    best.curseMulti = 1.0 + t.def.effectVal;
+                    best.curseTimer = 4.0;
+                }
+            }
+        }
+    }
+
+    // Decay attack animations + lightning flashes
+    for (let x2 = 0; x2 < COLS; x2++) for (let y2 = 0; y2 < ROWS; y2++) {
+        let tt = grid[x2][y2];
+        if (tt && tt.attackAnim > 0) tt.attackAnim -= dt;
+    }
+    for (let lfi = lightningFlashes.length - 1; lfi >= 0; lfi--) {
+        lightningFlashes[lfi].life -= dt;
+        if (lightningFlashes[lfi].life <= 0) lightningFlashes.splice(lfi, 1);
+    }
+
+    // Projectiles
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        let p = projectiles[i];
+        let dx = p.tx - p.x, dy = p.ty - p.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist < 5) {
+            if (p.splash) {
+                for (let e of enemies) {
+                    if (Math.hypot(e.x - p.tx, e.y - p.ty) <= p.splashR && e.hp > 0) {
+                        e.hp -= p.dmg * (e.curseMulti || 1.0);
+                    }
+                }
+                spawnParticle({x:p.tx, y:p.ty}, p.color, 8);
+            } else {
+                let hit = null, minD = 30;
+                for (let e of enemies) {
+                    let d = Math.hypot(e.x - p.tx, e.y - p.ty);
+                    if (d < minD && e.hp > 0) { hit = e; minD = d; }
+                }
+                if (hit) hit.hp -= p.dmg * (hit.curseMulti || 1.0);
+            }
+            projectiles.splice(i, 1);
+        } else {
+            let s = p.speed * dt / dist;
+            p.x += dx * s; p.y += dy * s;
+        }
+    }
+
+    // Enemies - left to right, despawn at right edge (no damage)
+    let laneStartX = GRID_X - 30;
+    let laneEndX = GRID_X + COLS * CELL_W + 30;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let e = enemies[i];
+        if (e.slowTimer > 0) { e.slowTimer -= dt; }
+        else { e.slowFactor = 1.0; }
+        // Burn DOT
+        if (e.burnTimer > 0) {
+            e.burnTimer -= dt;
+            e.hp -= (e.burnDmg || 0) * dt;
+        }
+        // Curse decay
+        if (e.curseTimer > 0) { e.curseTimer -= dt; }
+        else { e.cursed = false; e.curseMulti = 1.0; }
+        e.x += e.speed * e.slowFactor * dt;
+        // Check dead
+        if (e.hp <= 0) {
+            sp += e.reward + getRelicBonus('killSP');
+            spawnParticle({x:e.x, y:e.y}, e.color, 12);
+            enemies.splice(i, 1);
+            continue;
+        }
+        // Despawn at right edge - no damage, damage only from overflow
+        if (e.x >= laneEndX) {
+            enemies.splice(i, 1);
+            continue;
+        }
+    }
+
+    // Wave phase timer and overflow system
+    if (waveActive) {
+        // Phase timer countdown
+        wavePhaseTimer -= dt;
+        if (wavePhaseTimer <= 0 && stageMode && currentStage) {
+            wavePhaseTimer = 60;
+            if (wave < currentStage.waves) {
+                advanceToNextWavePhase();
+            }
+        }
+        // Continuous spawning during wave phase
+        wavePhaseSpawnTimer -= dt;
+        if (wavePhaseSpawnTimer <= 0 && enemies.length < 150) {
+            wavePhaseSpawnTimer = wavePhaseSpawnRate + (Math.random() * 0.4 - 0.2);
+            if (enemiesToSpawn.length > 0) {
+                spawnEnemy(enemiesToSpawn.shift());
+            } else {
+                // Spawn random enemies from current wave type
+                spawnEnemy(getWavePhaseEnemyType());
+            }
+        }
+        // Overflow HP drain check
+        if (enemies.length >= OVERFLOW_LIMIT) {
+            overflowTimer += dt;
+            if (overflowTimer >= OVERFLOW_DRAIN_INTERVAL) {
+                overflowTimer -= OVERFLOW_DRAIN_INTERVAL;
+                hp--;
+                showToast('적 과다! HP -1', 1000);
+                if (hp <= 0) { hp = 0; gameOver = true; }
+            }
+        } else {
+            overflowTimer = 0;
+        }
+    }
+
+    // Wave/stage complete check
+    if (waveActive && stageMode && currentStage && wave >= currentStage.waves && enemies.length === 0 && enemiesToSpawn.length === 0) {
+        // All waves done and all enemies dead - stage clear
+        waveActive = false;
+        let waveReward = 30 + wave * 10;
+        sp += waveReward;
+        showToast('스테이지 클리어!', 2000);
+        setTimeout(function() { onStageClear(); }, 1500);
+    } else if (waveActive && !stageMode && enemiesToSpawn.length === 0 && enemies.length === 0) {
+        // Legacy infinite mode: wave complete
+        waveActive = false;
+        let waveReward = 30 + wave * 10;
+        sp += waveReward;
+        showToast('웨이브 ' + wave + ' 클리어! +' + waveReward + ' 에너지');
+    }
+
+    // (Auto-wave timer no longer needed - wave phases are continuous)
+
+    // Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.vx *= 0.95; p.vy *= 0.95;
+        p.life -= dt;
+        if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    // UI
+    document.getElementById('summonBtn').disabled = sp < SUMMON_COST || gameOver;
+    if (isMultiplayer && !isHost) {
+        document.getElementById('startWaveBtn').disabled = true;
+    } else {
+        document.getElementById('startWaveBtn').disabled = waveActive || gameOver;
+    }
+
+    // Synergy bar
+    let roleKR = {PHYSICAL:'물리',MAGIC:'마법',SPLASH:'범위',SUPPORT:'지원',ECONOMY:'경제',SPECIAL:'특수',LEGENDARY:'전설'};
+    let synText = '';
+    let parts = [];
+    for (let r in synergies) {
+        parts.push((roleKR[r]||r) + ' +' + Math.round(synergies[r]*100) + '%');
+    }
+    synText = parts.join('  \u00B7  ');
+    document.getElementById('synergyBar').textContent = synText ? '\u26A1 시너지 활성: ' + synText : '';
+
+    // Update recipe panel periodically
+    updateRecipePanel();
+}
+
+// ── Draw ──
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background with gradient
+    let bgGrd = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    bgGrd.addColorStop(0, '#050518');
+    bgGrd.addColorStop(0.5, '#0a0a2e');
+    bgGrd.addColorStop(1, '#0d0820');
+    ctx.fillStyle = bgGrd;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Background stars
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 40; i++) {
+        let sx = ((i * 137 + 50) % canvas.width);
+        let sy = ((i * 97 + 30) % canvas.height);
+        let twinkle = 0.2 + Math.sin(Date.now() / 1000 + i * 0.7) * 0.15;
+        ctx.globalAlpha = twinkle;
+        ctx.fillRect(sx, sy, 1.5, 1.5);
+    }
+    ctx.globalAlpha = 1.0;
+
+    // Grid background panel
+    ctx.fillStyle = '#08082288';
+    ctx.strokeStyle = '#1a1a5588';
+    ctx.lineWidth = 1;
+    let gpx = GRID_X - 10, gpy = GRID_Y - 25;
+    let gpw = COLS * CELL_W + 20, gph = ROWS * CELL_H + 55;
+    ctx.fillRect(gpx, gpy, gpw, gph);
+    ctx.strokeRect(gpx, gpy, gpw, gph);
+
+    // Corner accents on grid panel
+    let cornerLen = 15;
+    ctx.strokeStyle = '#00ffff66';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(gpx, gpy + cornerLen); ctx.lineTo(gpx, gpy); ctx.lineTo(gpx + cornerLen, gpy); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gpx+gpw-cornerLen, gpy); ctx.lineTo(gpx+gpw, gpy); ctx.lineTo(gpx+gpw, gpy+cornerLen); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gpx, gpy+gph-cornerLen); ctx.lineTo(gpx, gpy+gph); ctx.lineTo(gpx+cornerLen, gpy+gph); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gpx+gpw-cornerLen, gpy+gph); ctx.lineTo(gpx+gpw, gpy+gph); ctx.lineTo(gpx+gpw, gpy+gph-cornerLen); ctx.stroke();
+
+    // Lane glow effect (animated)
+    let laneY = GRID_Y + LANE_ROW * CELL_H;
+    let laneGrd = ctx.createLinearGradient(GRID_X, laneY, GRID_X + COLS * CELL_W, laneY);
+    let lanePhase = (Date.now() / 2000) % 1;
+    laneGrd.addColorStop(Math.max(0, lanePhase - 0.1), '#6600cc00');
+    laneGrd.addColorStop(lanePhase, '#6600cc44');
+    laneGrd.addColorStop(Math.min(1, lanePhase + 0.1), '#6600cc00');
+    ctx.fillStyle = laneGrd;
+    ctx.fillRect(GRID_X, laneY, COLS * CELL_W, CELL_H);
+
+    // Grid cells
+    for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) {
+        let px = GRID_X + x * CELL_W, py = GRID_Y + y * CELL_H;
+        ctx.fillStyle = y === LANE_ROW ? '#1a0a3e' : '#0d0d35';
+        ctx.fillRect(px + 1, py + 1, CELL_W - 2, CELL_H - 2);
+        ctx.strokeStyle = y === LANE_ROW ? '#4400aa' : getZoneColor(x, y);
+        ctx.lineWidth = y === LANE_ROW ? 1 : 2;
+        ctx.globalAlpha = y === LANE_ROW ? 0.5 : 0.7;
+        ctx.strokeRect(px + 1, py + 1, CELL_W - 2, CELL_H - 2);
+        ctx.globalAlpha = 1.0;
+    }
+
+    // Lane label
+    ctx.fillStyle = '#6600cc';
+    ctx.font = '14px DungGeunMo, Press Start 2P, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('\u25C0\u2550\u2550 \uC801 \uC774\uB3D9 \uB808\uC778 (100\uB9C8\uB9AC \uCD08\uACFC \uC2DC HP \uAC10\uC18C) \u2550\u2550\u25B6', GRID_X + COLS * CELL_W / 2, GRID_Y + LANE_ROW * CELL_H + CELL_H / 2 + 5);
+
+    // Zone labels (상/하 분할)
+    ctx.font = '12px DungGeunMo, Press Start 2P, monospace';
+    ctx.textAlign = 'left';
+    if (isMultiplayer) {
+        let p1Label = isHost ? playerName : opponentName;
+        let p2Label = isHost ? opponentName : playerName;
+        if (!p1Label) p1Label = 'P1';
+        if (!p2Label) p2Label = 'P2';
+        ctx.fillStyle = '#00ffff';
+        ctx.fillText('\u25B2 ' + p1Label + ' (\uD638\uC2A4\uD2B8)', GRID_X, GRID_Y - 8);
+        ctx.fillStyle = '#ff00ff';
+        ctx.fillText('\u25BC ' + p2Label + ' (\uAC8C\uC2A4\uD2B8)', GRID_X, GRID_Y + ROWS * CELL_H + 16);
+    } else {
+        ctx.fillStyle = '#00ffff';
+        ctx.fillText('\u25B2 \uB0B4 \uC601\uC5ED (\uC704)', GRID_X, GRID_Y - 8);
+        ctx.fillStyle = '#ff00ff';
+        ctx.fillText('\u25BC \uC0C1\uB300 \uC601\uC5ED (\uC544\uB798) - \uBA40\uD2F0\uC5D0\uC11C \uC0AC\uC6A9', GRID_X, GRID_Y + ROWS * CELL_H + 16);
+    }
+
+    // Towers - pixel art rendering
+    for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) {
+        let t = grid[x][y];
+        if (!t) continue;
+        let pos = gridToWorld(x, y);
+        let isSelected = selectedCell && selectedCell.x === x && selectedCell.y === y;
+        let isHidden = t.def.hidden;
+
+        // Pixel size scales with grade (for normal towers 1-3)
+        let pixelSize;
+        if (isHidden) {
+            pixelSize = 5; // Hidden characters are always big
+        } else {
+            pixelSize = 2 + t.grade; // 3 for 1★, 4 for 2★, 5 for 3★
+        }
+
+        // Neon glow behind character
+        let glowRadius = pixelSize * 6;
+        let grd = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, glowRadius);
+        grd.addColorStop(0, t.def.color + '55');
+        grd.addColorStop(0.5, t.def.color + '22');
+        grd.addColorStop(1, t.def.color + '00');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, glowRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Selection pulsing glow
+        if (isSelected) {
+            let pulse = 0.3 + Math.sin(Date.now() / 300) * 0.15;
+            let selGrd = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, glowRadius + 10);
+            selGrd.addColorStop(0, t.def.color + '00');
+            selGrd.addColorStop(0.7, t.def.color + Math.round(pulse * 255).toString(16).padStart(2, '0'));
+            selGrd.addColorStop(1, t.def.color + '00');
+            ctx.fillStyle = selGrd;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, glowRadius + 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Range indicator when selected
+        if (isSelected && t.def.range > 0) {
+            let lvlR = t.level || 1;
+            let rangeVal = isHidden ? t.def.range * (1 + (lvlR-1)*0.10) : t.def.range * (1 + (t.grade-1)*0.05) * (1 + (lvlR-1)*0.10);
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, rangeVal, 0, Math.PI * 2);
+            ctx.strokeStyle = t.def.color + '33';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // Draw pixel art character
+        let pixelData = PIXEL_ART[t.type];
+        // Attack animation offset
+        let animOff = 0;
+        if (t.attackAnim > 0) {
+            animOff = Math.sin(t.attackAnim * Math.PI / 0.2) * 3;
+        }
+        if (pixelData) {
+            drawPixelArt(ctx, pixelData, pos.x, pos.y - 4 + (t.type === 'cannon' ? animOff : 0), pixelSize, t.def.color);
+        } else {
+            // Fallback: draw a simple shape
+            ctx.fillStyle = t.def.color;
+            ctx.fillRect(pos.x - 10, pos.y - 10, 20, 20);
+        }
+
+        // Per-tower attack visual effects
+        if (t.attackAnim > 0) {
+            let aRatio = t.attackAnim / 0.2;
+            ctx.save();
+            switch(t.type) {
+                case 'archer':
+                case 'shingoong':
+                    // Pullback release
+                    ctx.strokeStyle = t.def.color + '88';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(pos.x + 8, pos.y - 4, 4 * (1 - aRatio), -0.5, 0.5);
+                    ctx.stroke();
+                    break;
+                case 'blade':
+                case 'noishin':
+                    // Quick slash arc
+                    ctx.strokeStyle = '#ccddff';
+                    ctx.lineWidth = 2;
+                    ctx.globalAlpha = aRatio;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y - 4, 18, -Math.PI * aRatio, Math.PI * (1-aRatio));
+                    ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                    break;
+                case 'gunner':
+                case 'geumgang':
+                    // Muzzle flash
+                    if (aRatio > 0.5) {
+                        ctx.fillStyle = '#ffaa00';
+                        ctx.globalAlpha = (aRatio - 0.5) * 2;
+                        ctx.beginPath();
+                        ctx.arc(pos.x + 12, pos.y - 4, 5 * aRatio, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.globalAlpha = 1.0;
+                    }
+                    break;
+                case 'mage':
+                case 'yuryeong':
+                    // Orbiting particle speedup
+                    ctx.strokeStyle = t.def.color + '66';
+                    ctx.lineWidth = 1;
+                    let mAngle = Date.now() / 100 * (1 + (1-aRatio) * 3);
+                    ctx.beginPath();
+                    ctx.arc(pos.x + Math.cos(mAngle) * 14, pos.y - 4 + Math.sin(mAngle) * 14, 2, 0, Math.PI * 2);
+                    ctx.fillStyle = t.def.color;
+                    ctx.fill();
+                    break;
+                case 'lightning':
+                    // Brief bright glow
+                    ctx.fillStyle = '#ffff00';
+                    ctx.globalAlpha = aRatio * 0.4;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y - 4, 20, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    break;
+                case 'cannon':
+                    // Recoil handled above via animOff
+                    // Smoke puff
+                    if (aRatio > 0.6) {
+                        ctx.fillStyle = '#88888844';
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y - 20, 6 * (1 - aRatio) * 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    break;
+                case 'frost':
+                case 'bingpok':
+                    // Ice crystal rotation
+                    ctx.strokeStyle = '#88ccff66';
+                    ctx.lineWidth = 1;
+                    let iceAngle = Date.now() / 150;
+                    for (let ri = 0; ri < 3; ri++) {
+                        let ra = iceAngle + ri * Math.PI * 2 / 3;
+                        ctx.beginPath();
+                        ctx.moveTo(pos.x, pos.y - 4);
+                        ctx.lineTo(pos.x + Math.cos(ra) * 16 * aRatio, pos.y - 4 + Math.sin(ra) * 16 * aRatio);
+                        ctx.stroke();
+                    }
+                    break;
+                case 'mine':
+                    // Coin toss
+                    ctx.fillStyle = '#ffdd0088';
+                    ctx.globalAlpha = aRatio;
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y - 4 - 12 * aRatio, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    break;
+                case 'dragon':
+                case 'hwaryong':
+                    // Fire breath particles
+                    ctx.globalAlpha = aRatio;
+                    for (let fi = 0; fi < 3; fi++) {
+                        let fx = pos.x + 10 + fi * 6 + Math.random() * 4;
+                        let fy = pos.y - 4 + (Math.random() - 0.5) * 10;
+                        ctx.fillStyle = fi === 0 ? '#ff2200' : fi === 1 ? '#ff6600' : '#ffaa00';
+                        ctx.beginPath();
+                        ctx.arc(fx, fy, 3 - fi * 0.5, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                    ctx.globalAlpha = 1.0;
+                    break;
+            }
+            ctx.restore();
+        }
+
+        // Grade display
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        let gradeY = pos.y + glowRadius * 0.6 + 2;
+        if (isHidden) {
+            ctx.fillStyle = t.def.color;
+            ctx.font = 'bold 12px DungGeunMo, Press Start 2P, monospace';
+            ctx.fillText('\u25C6 HIDDEN', pos.x, gradeY);
+        } else {
+            ctx.fillStyle = '#ffdd00';
+            ctx.font = '10px DungGeunMo, Press Start 2P, monospace';
+            ctx.fillText('\u2605'.repeat(t.grade), pos.x, gradeY);
+        }
+        // Level indicator
+        if (t.level && t.level > 1) {
+            ctx.fillStyle = '#00ff88';
+            ctx.font = '9px DungGeunMo, Press Start 2P, monospace';
+            ctx.fillText('Lv.' + t.level, pos.x, gradeY + 12);
+        }
+
+        // Tower name on select
+        if (isSelected) {
+            ctx.fillStyle = t.def.color;
+            ctx.font = 'bold 11px DungGeunMo, Press Start 2P, monospace';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(t.def.name, pos.x, pos.y - glowRadius * 0.6 - 2);
+            ctx.textBaseline = 'top';
+        }
+    }
+
+    // Enemies
+    for (let e of enemies) {
+        let isBoss = e.type === 'boss';
+        let size = isBoss ? 22 : (e.type === 'tank' ? 16 : (e.type === 'fast' ? 10 : 12));
+
+        // Glow
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, size + 8, 0, Math.PI * 2);
+        let eGrd = ctx.createRadialGradient(e.x, e.y, size, e.x, e.y, size + 8);
+        eGrd.addColorStop(0, e.color + '33');
+        eGrd.addColorStop(1, e.color + '00');
+        ctx.fillStyle = eGrd;
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(e.x, e.y);
+
+        if (e.type === 'normal') {
+            ctx.beginPath();
+            ctx.arc(0, 2, size, 0, Math.PI, false);
+            ctx.arc(0, 0, size, Math.PI, 0, false);
+            ctx.closePath();
+            ctx.fillStyle = e.color + '99';
+            ctx.fill();
+            ctx.strokeStyle = e.color;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.fillStyle = '#333';
+            ctx.fillRect(-5, -3, 3, 4);
+            ctx.fillRect(3, -3, 3, 4);
+        } else if (e.type === 'fast') {
+            ctx.beginPath();
+            ctx.moveTo(size, 0);
+            ctx.lineTo(-size*0.5, -size*0.7);
+            ctx.lineTo(-size*0.2, 0);
+            ctx.lineTo(-size*0.5, size*0.7);
+            ctx.closePath();
+            ctx.fillStyle = e.color + '99';
+            ctx.fill();
+            ctx.strokeStyle = e.color;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.strokeStyle = e.color + '44';
+            ctx.lineWidth = 1;
+            for (let i = 1; i <= 3; i++) {
+                ctx.beginPath();
+                ctx.moveTo(-size*0.5 - i*5, -4 + i*3);
+                ctx.lineTo(-size*0.5 - i*5 - 8, -4 + i*3);
+                ctx.stroke();
+            }
+        } else if (e.type === 'tank') {
+            ctx.fillStyle = e.color + '77';
+            let hw = size*0.8, hh = size*0.9;
+            ctx.beginPath();
+            ctx.moveTo(-hw, -hh);
+            ctx.lineTo(hw, -hh);
+            ctx.lineTo(hw*1.1, 0);
+            ctx.lineTo(hw, hh);
+            ctx.lineTo(-hw, hh);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = e.color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.strokeStyle = e.color + 'aa';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, -hh*0.5); ctx.lineTo(0, hh*0.5);
+            ctx.moveTo(-hw*0.5, 0); ctx.lineTo(hw*0.5, 0);
+            ctx.stroke();
+        } else if (isBoss) {
+            ctx.beginPath();
+            ctx.arc(0, 3, size*0.7, 0, Math.PI * 2);
+            ctx.fillStyle = e.color + '88';
+            ctx.fill();
+            ctx.strokeStyle = e.color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(-size*0.7, -size*0.2);
+            ctx.lineTo(-size*0.7, -size*0.8);
+            ctx.lineTo(-size*0.35, -size*0.5);
+            ctx.lineTo(0, -size*0.9);
+            ctx.lineTo(size*0.35, -size*0.5);
+            ctx.lineTo(size*0.7, -size*0.8);
+            ctx.lineTo(size*0.7, -size*0.2);
+            ctx.closePath();
+            ctx.fillStyle = e.color + 'cc';
+            ctx.fill();
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, -size*0.55, 3, 0, Math.PI*2);
+            ctx.fillStyle = '#ff0000';
+            ctx.fill();
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(-6, 0, 4, 5);
+            ctx.fillRect(3, 0, 4, 5);
+        }
+
+        ctx.restore();
+
+        // Slow indicator
+        if (e.slowTimer > 0) {
+            ctx.strokeStyle = '#88ccff';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, size + 5, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        // HP bar
+        let barW = isBoss ? 40 : 28, barH = isBoss ? 5 : 3;
+        let hpRatio = e.hp / e.maxHp;
+        ctx.fillStyle = '#222';
+        ctx.fillRect(e.x - barW/2, e.y - size - 12, barW, barH);
+        let hpColor = hpRatio > 0.5 ? '#00ff00' : hpRatio > 0.25 ? '#ffff00' : '#ff0000';
+        ctx.fillStyle = hpColor;
+        ctx.fillRect(e.x - barW/2, e.y - size - 12, barW * hpRatio, barH);
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(e.x - barW/2, e.y - size - 12, barW, barH);
+
+        // (enemies now only move left to right, no laps display needed)
+    }
+
+    // Lightning flashes (instant bolt effects)
+    for (let lf of lightningFlashes) {
+        let alpha = Math.min(1, lf.life / 0.06);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = lf.color;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = lf.color;
+        ctx.shadowBlur = 15;
+        // Draw zigzag bolt
+        let ldx = lf.x2 - lf.x1, ldy = lf.y2 - lf.y1;
+        let ldist = Math.hypot(ldx, ldy) || 1;
+        let segments = 6;
+        ctx.beginPath();
+        ctx.moveTo(lf.x1, lf.y1);
+        for (let si = 1; si < segments; si++) {
+            let t2 = si / segments;
+            let mx2 = lf.x1 + ldx * t2 + (Math.random() - 0.5) * 20;
+            let my2 = lf.y1 + ldy * t2 + (Math.random() - 0.5) * 20;
+            ctx.lineTo(mx2, my2);
+        }
+        ctx.lineTo(lf.x2, lf.y2);
+        ctx.stroke();
+        // Secondary thinner bolt
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = alpha * 0.5;
+        ctx.beginPath();
+        ctx.moveTo(lf.x1, lf.y1);
+        for (let si = 1; si < segments; si++) {
+            let t2 = si / segments;
+            ctx.lineTo(lf.x1 + ldx * t2 + (Math.random() - 0.5) * 30, lf.y1 + ldy * t2 + (Math.random() - 0.5) * 30);
+        }
+        ctx.lineTo(lf.x2, lf.y2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+    }
+
+    // Projectiles - unique per tower type
+    for (let p of projectiles) {
+        let pdx = p.tx - p.x, pdy = p.ty - p.y;
+        let pd = Math.hypot(pdx, pdy) || 1;
+        let angle = Math.atan2(pdy, pdx);
+
+        ctx.save();
+        switch(p.towerType) {
+            case 'archer':
+            case 'shingoong':
+                // Cyan arrow / triangle
+                ctx.translate(p.x, p.y);
+                ctx.rotate(angle);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.moveTo(6, 0);
+                ctx.lineTo(-4, -3);
+                ctx.lineTo(-2, 0);
+                ctx.lineTo(-4, 3);
+                ctx.closePath();
+                ctx.fill();
+                // Trail line
+                ctx.strokeStyle = p.color + '66';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(-2, 0);
+                ctx.lineTo(-12, 0);
+                ctx.stroke();
+                break;
+            case 'blade':
+                // Silver slash arc
+                ctx.translate(p.x, p.y);
+                ctx.rotate(angle);
+                ctx.strokeStyle = '#ccccee';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 8, -0.8, 0.8);
+                ctx.stroke();
+                ctx.strokeStyle = '#ffffff44';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, -0.6, 0.6);
+                ctx.stroke();
+                break;
+            case 'gunner':
+            case 'geumgang':
+                // Small orange bullets
+                ctx.fillStyle = '#ff9900';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffcc44';
+                ctx.beginPath();
+                ctx.arc(p.x + Math.cos(angle + 0.3) * 4, p.y + Math.sin(angle + 0.3) * 4, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(p.x + Math.cos(angle - 0.3) * 4, p.y + Math.sin(angle - 0.3) * 4, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'mage':
+            case 'yuryeong':
+                // Magenta energy orb with trail
+                ctx.shadowColor = p.color;
+                ctx.shadowBlur = 10;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                // Trail
+                ctx.strokeStyle = p.color + '55';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x - Math.cos(angle) * 14, p.y - Math.sin(angle) * 14);
+                ctx.stroke();
+                ctx.fillStyle = '#ffffff88';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'cannon':
+                // Large orange cannonball
+                ctx.fillStyle = '#884400';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff8800';
+                ctx.beginPath();
+                ctx.arc(p.x - 1, p.y - 1, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffcc88';
+                ctx.beginPath();
+                ctx.arc(p.x - 2, p.y - 2, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                break;
+            case 'frost':
+            case 'bingpok':
+                // Light blue crystal shard
+                ctx.translate(p.x, p.y);
+                ctx.rotate(angle + Date.now() / 200);
+                ctx.fillStyle = '#88ccff';
+                ctx.beginPath();
+                ctx.moveTo(0, -5);
+                ctx.lineTo(3, 0);
+                ctx.lineTo(0, 5);
+                ctx.lineTo(-3, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.fillStyle = '#aaddff88';
+                ctx.beginPath();
+                ctx.moveTo(0, -3);
+                ctx.lineTo(2, 0);
+                ctx.lineTo(0, 3);
+                ctx.lineTo(-2, 0);
+                ctx.closePath();
+                ctx.fill();
+                break;
+            case 'mine':
+                // Gold coin spinning
+                let coinPhase = Math.sin(Date.now() / 100);
+                ctx.fillStyle = '#ffdd00';
+                ctx.beginPath();
+                ctx.ellipse(p.x, p.y, 4 * Math.abs(coinPhase), 4, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#aa8800';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                break;
+            case 'dragon':
+            case 'hwaryong':
+                // Red fireball with flame trail
+                ctx.shadowColor = '#ff4400';
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = '#ff2200';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff8800';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffcc00';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                // Flame trail
+                for (let fi = 1; fi <= 4; fi++) {
+                    let fx = p.x - Math.cos(angle) * fi * 5 + (Math.random()-0.5) * 4;
+                    let fy = p.y - Math.sin(angle) * fi * 5 + (Math.random()-0.5) * 4;
+                    ctx.globalAlpha = 0.6 - fi * 0.12;
+                    ctx.fillStyle = fi < 2 ? '#ff6600' : '#ff990066';
+                    ctx.beginPath();
+                    ctx.arc(fx, fy, 3 - fi * 0.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1.0;
+                break;
+            default:
+                // Default projectile
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(p.x, p.y);
+                ctx.lineTo(p.x - pdx/pd * 8, p.y - pdy/pd * 8);
+                ctx.strokeStyle = p.color + '88';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                break;
+        }
+        ctx.restore();
+    }
+
+    // Particles
+    for (let p of particles) {
+        let alpha = Math.max(0, p.life / p.maxLife);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = alpha;
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+    }
+
+    // Drag line
+    if (dragFrom) {
+        let fromPos = gridToWorld(dragFrom.x, dragFrom.y);
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = '#ffff00';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(fromPos.x, fromPos.y);
+        ctx.lineTo(mouseX, mouseY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        let t = grid[dragFrom.x][dragFrom.y];
+        if (t) {
+            // Highlight target cell
+            let hoverG = worldToGrid(mouseX, mouseY);
+            if (hoverG && hoverG.y !== LANE_ROW && !(hoverG.x === dragFrom.x && hoverG.y === dragFrom.y)) {
+                let hPos = gridToWorld(hoverG.x, hoverG.y);
+                let hx = hPos.x - CELL_W/2, hy = hPos.y - CELL_H/2;
+                let target = grid[hoverG.x][hoverG.y];
+                if (!target) {
+                    // Empty cell -> move indicator (green)
+                    ctx.fillStyle = '#00ff0022';
+                    ctx.fillRect(hx+2, hy+2, CELL_W-4, CELL_H-4);
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(hx+2, hy+2, CELL_W-4, CELL_H-4);
+                    ctx.fillStyle = '#00ff00';
+                    ctx.font = '12px DungGeunMo, Press Start 2P, monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('\uC774\uB3D9', hPos.x, hPos.y);
+                } else if (canMerge(t, target)) {
+                    // Can merge -> merge indicator (yellow)
+                    ctx.fillStyle = '#ffff0033';
+                    ctx.fillRect(hx+2, hy+2, CELL_W-4, CELL_H-4);
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(hx+2, hy+2, CELL_W-4, CELL_H-4);
+                    ctx.fillStyle = '#ffff00';
+                    ctx.font = '12px DungGeunMo, Press Start 2P, monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('\uD569\uC131', hPos.x, hPos.y);
+                } else if (target) {
+                    // Cannot merge -> red indicator
+                    ctx.fillStyle = '#ff000022';
+                    ctx.fillRect(hx+2, hy+2, CELL_W-4, CELL_H-4);
+                    ctx.strokeStyle = '#ff0000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(hx+2, hy+2, CELL_W-4, CELL_H-4);
+                }
+            }
+
+            // Ghost tower at cursor
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, 20, 0, Math.PI * 2);
+            ctx.fillStyle = t.def.color + '55';
+            ctx.fill();
+            ctx.strokeStyle = t.def.color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px DungGeunMo, Press Start 2P, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(t.def.name[0], mouseX, mouseY);
+        }
+    }
+
+    // HUD
+    ctx.font = 'bold 20px DungGeunMo, Press Start 2P, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ff4444';
+    ctx.fillText('\u2665 HP: ' + hp, 10, 30);
+    ctx.fillStyle = '#00ffff';
+    ctx.textAlign = 'center';
+    let waveText;
+    if (stageMode && currentStage) {
+        waveText = currentStage.label + ' ' + (wave === 0 ? '준비' : wave + '/' + currentStage.waves) + (waveActive ? ' 🔥' : '');
+    } else {
+        waveText = wave === 0 ? '\uC900\uBE44 \uC911' : '\uC6E8\uC774\uBE0C ' + wave + (waveActive ? ' \uD83D\uDD25' : ' \u2713');
+    }
+    ctx.fillText(waveText, canvas.width / 2, 30);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffff00';
+    ctx.fillText('\u26A1 \uC5D0\uB108\uC9C0: ' + sp, canvas.width - 10, 30);
+
+    // Gold display (stage mode)
+    if (stageMode) {
+        ctx.font = '14px DungGeunMo, Press Start 2P, monospace';
+        ctx.fillStyle = '#ffdd00';
+        ctx.textAlign = 'right';
+        ctx.fillText('💰 ' + saveData.gold, canvas.width - 10, 48);
+    } else {
+        // SP source indicator
+        ctx.font = '12px DungGeunMo, Press Start 2P, monospace';
+        ctx.fillStyle = '#888';
+        ctx.textAlign = 'right';
+        ctx.fillText('\uC801 \uCC98\uCE58 + \uC6E8\uC774\uBE0C \uBCF4\uC0C1', canvas.width - 10, 48);
+    }
+
+    // Multiplayer player names in HUD
+    if (isMultiplayer) {
+        ctx.font = '11px DungGeunMo, Press Start 2P, monospace';
+        ctx.textAlign = 'left';
+        let myRole = isHost ? '\uD638\uC2A4\uD2B8' : '\uAC8C\uC2A4\uD2B8';
+        ctx.fillStyle = '#00ffff88';
+        ctx.fillText(playerName + ' (' + myRole + ')', 10, 48);
+        if (opponentName) {
+            let oppRole = isHost ? '\uAC8C\uC2A4\uD2B8' : '\uD638\uC2A4\uD2B8';
+            ctx.fillText('vs ' + opponentName + ' (' + oppRole + ')', 10, 62);
+        }
+    }
+
+    // Wave phase timer display
+    if (waveActive && stageMode) {
+        ctx.font = '14px DungGeunMo, Press Start 2P, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#88ccff';
+        ctx.fillText('\u23F1 ' + Math.ceil(wavePhaseTimer) + '\uCD08', 10, 68);
+    }
+
+    // Overflow warning
+    if (waveActive) {
+        let enemyCount = enemies.length;
+        if (enemyCount > 80) {
+            ctx.font = 'bold 14px DungGeunMo, Press Start 2P, monospace';
+            ctx.textAlign = 'left';
+            if (enemyCount >= OVERFLOW_LIMIT) {
+                ctx.fillStyle = '#ff0000';
+                ctx.fillText('\uD83D\uDEA8 \uC801 \uACFC\uB2E4! ' + enemyCount + '/100 - HP \uAC10\uC18C \uC911!', 10, 86);
+            } else {
+                ctx.fillStyle = '#ffaa00';
+                ctx.fillText('\u26A0 \uC801 ' + enemyCount + '/100', 10, 86);
+            }
+        }
+    }
+
+    // Equipped relics display in HUD (top-right area)
+    if (stageMode) {
+        let relicStartX = canvas.width - 200;
+        let relicY = 58;
+        ctx.font = '10px DungGeunMo, Press Start 2P, monospace';
+        ctx.textAlign = 'center';
+        for (let ri = 0; ri < 3; ri++) {
+            let rx = relicStartX + ri * 62;
+            let relicId = saveData.equippedRelics[ri];
+            if (relicId) {
+                let rd = getRelicDef(relicId);
+                let rlvl = (saveData.relicLevels && saveData.relicLevels[relicId]) || 1;
+                if (rd) {
+                    ctx.fillStyle = '#1a1a4e';
+                    ctx.fillRect(rx, relicY, 56, 20);
+                    ctx.strokeStyle = '#ffdd0088';
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(rx, relicY, 56, 20);
+                    ctx.fillStyle = '#ffdd00';
+                    ctx.fillText(rd.icon + ' Lv.' + rlvl, rx + 28, relicY + 11);
+                }
+            } else {
+                ctx.fillStyle = '#0d0d3588';
+                ctx.fillRect(rx, relicY, 56, 20);
+                ctx.strokeStyle = '#33335588';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(rx, relicY, 56, 20);
+                ctx.fillStyle = '#333';
+                ctx.fillText('-', rx + 28, relicY + 11);
+            }
+        }
+    }
+
+    // Boss HP bar
+    let boss = enemies.find(function(e) { return e.type === 'boss'; });
+    if (boss) {
+        let bw = 400, bh = 16;
+        let bx = canvas.width / 2 - bw / 2, by = 50;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(bx, by, bw, bh);
+        let ratio = boss.hp / boss.maxHp;
+        ctx.fillStyle = '#ffdd00';
+        ctx.fillRect(bx, by, bw * ratio, bh);
+        ctx.strokeStyle = '#ffdd00';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(bx, by, bw, bh);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 12px DungGeunMo, Press Start 2P, monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u2605 \uBCF4\uC2A4 \u2605', canvas.width / 2, by + 13);
+    }
+
+    // Tower info (selected)
+    if (selectedCell) {
+        let t = grid[selectedCell.x][selectedCell.y];
+        if (t) {
+            let ix = 10, iy = canvas.height - 155;
+            ctx.fillStyle = '#0a0a2e';
+            ctx.fillRect(ix, iy, 270, 145);
+            ctx.strokeStyle = t.def.color;
+            ctx.lineWidth = 2;
+            ctx.strokeRect(ix, iy, 270, 145);
+
+            let roleNames = {PHYSICAL:'\uBB3C\uB9AC',MAGIC:'\uB9C8\uBC95',SPLASH:'\uBC94\uC704',SUPPORT:'\uC9C0\uC6D0',ECONOMY:'\uACBD\uC81C',SPECIAL:'\uD2B9\uC218',LEGENDARY:'\uC804\uC124',HIDDEN:'\uD788\uB4E0'};
+            let effectNames = {slow:'\uAC10\uC18D',energy_drop:'\uC5D0\uB108\uC9C0 \uB4DC\uB86D',sp_gen:'\uC5D0\uB108\uC9C0 \uC0DD\uC0B0',dot:'\uC9C0\uC18D \uD53C\uD574',buff_damage:'\uACF5\uACA9\uB825 \uAC15\uD654',knockback:'\uBC00\uCE58\uAE30',pull:'\uB04C\uC5B4\uB2F9\uAE40',pierce:'\uAD00\uD1B5',freeze:'\uB3D9\uACB0',chain:'\uC5F0\uC1C4',stun:'\uC2A4\uD134',burn:'\uD654\uC0C1',curse:'\uC800\uC8FC'};
+
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.fillStyle = t.def.color;
+            ctx.font = 'bold 16px DungGeunMo, Press Start 2P, monospace';
+            let gradeStr = t.def.hidden ? ' \u25C6' : ' ' + '\u2605'.repeat(t.grade);
+            ctx.fillText(t.def.name + gradeStr, ix + 10, iy + 10);
+            ctx.fillStyle = '#aaa';
+            ctx.font = '13px DungGeunMo, Press Start 2P, monospace';
+            ctx.fillText('\uC720\uD615: ' + (roleNames[t.def.role] || t.def.role), ix + 10, iy + 32);
+            let tLvl = t.level || 1;
+            let effDmg = t.def.hidden ? Math.round(t.def.dmg * (1 + (tLvl-1)*0.25)) : Math.round(t.def.dmg * Math.pow(1.5, t.grade - 1) * (1 + (tLvl-1)*0.25));
+            let effSpd = t.def.hidden ? (t.def.spd * (1 + (tLvl-1)*0.15)).toFixed(1) : (t.def.spd * (1 + (t.grade - 1) * 0.1) * (1 + (tLvl-1)*0.15)).toFixed(1);
+            let effRange = t.def.hidden ? Math.round(t.def.range * (1 + (tLvl-1)*0.10)) : Math.round(t.def.range * (1 + (t.grade-1)*0.05) * (1 + (tLvl-1)*0.10));
+            ctx.fillText('\uACF5\uACA9\uB825: ' + effDmg + '  \uC18D\uB3C4: ' + effSpd + '/\uCD08', ix + 10, iy + 52);
+            ctx.fillText('\uC0AC\uAC70\uB9AC: ' + effRange + '  \uB808\uBCA8: Lv.' + tLvl, ix + 10, iy + 72);
+            if (t.def.effect) {
+                let effName = effectNames[t.def.effect] || t.def.effect;
+                let effDesc = '';
+                if (t.def.effect === 'slow') effDesc = effName + ' ' + Math.round(t.def.effectVal * 100) + '%';
+                else if (t.def.effect === 'energy_drop') effDesc = effName + ' ' + Math.round((t.def.effectVal + (t.grade-1)*0.05)*100) + '% \uD655\uB960';
+                else if (t.def.effect === 'pierce') effDesc = effName + ' ' + t.def.effectVal + '\uB9C8\uB9AC';
+                else if (t.def.effect === 'freeze') effDesc = effName + ' ' + t.def.effectVal + '\uCD08';
+                else if (t.def.effect === 'chain') effDesc = effName + ' ' + t.def.effectVal + '\uB9C8\uB9AC';
+                else if (t.def.effect === 'stun') effDesc = effName + ' ' + t.def.effectVal + '\uCD08';
+                else if (t.def.effect === 'burn') effDesc = effName + ' \uCD08\uB2F9 ' + t.def.effectVal + ' \uB370\uBBF8\uC9C0';
+                else if (t.def.effect === 'curse') effDesc = effName + ' \uBC1B\uB294 \uB370\uBBF8\uC9C0 +' + Math.round(t.def.effectVal*100) + '%';
+                else effDesc = effName;
+                ctx.fillText('\uD6A8\uACFC: ' + effDesc, ix + 10, iy + 92);
+            }
+            // 판매 버튼
+            let sellRefund = Math.floor(SUMMON_COST * t.grade * 0.5 + getUpgradeCostSpent(t.level || 1) * 0.5);
+            let btnX = ix + 10, btnY = iy + 112, btnW = 250, btnH = 24;
+            ctx.fillStyle = '#442200';
+            ctx.fillRect(btnX, btnY, btnW, btnH);
+            ctx.strokeStyle = '#ffaa00';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(btnX, btnY, btnW, btnH);
+            ctx.fillStyle = '#ffaa00';
+            ctx.font = 'bold 12px DungGeunMo, Press Start 2P, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('\uD310\uB9E4 (+' + sellRefund + ' \uC5D0\uB108\uC9C0)', btnX + btnW/2, btnY + btnH/2);
+            // Store sell button bounds for click detection
+            window._sellBtnBounds = {x: btnX, y: btnY, w: btnW, h: btnH, gx: selectedCell.x, gy: selectedCell.y};
+        }
+    }
+
+    // ── Upgrade Popup Overlay ──
+    if (upgradePopup) {
+        let ut = grid[upgradePopup.gx] && grid[upgradePopup.gx][upgradePopup.gy];
+        if (!ut) { closeUpgradePopup(); }
+        else {
+            // Dark overlay
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Panel
+            let pw = 300, ph = 260;
+            let px = (canvas.width - pw) / 2, py = (canvas.height - ph) / 2;
+            ctx.fillStyle = '#0a0a2e';
+            ctx.fillRect(px, py, pw, ph);
+            ctx.strokeStyle = '#00ffff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(px, py, pw, ph);
+            // Neon corner accents
+            ctx.strokeStyle = '#00ffff66';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(px, py+15); ctx.lineTo(px, py); ctx.lineTo(px+15, py); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(px+pw-15, py); ctx.lineTo(px+pw, py); ctx.lineTo(px+pw, py+15); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(px, py+ph-15); ctx.lineTo(px, py+ph); ctx.lineTo(px+15, py+ph); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(px+pw-15, py+ph); ctx.lineTo(px+pw, py+ph); ctx.lineTo(px+pw, py+ph-15); ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            // Title
+            let utLvl = ut.level || 1;
+            let gradeStr2 = ut.def.hidden ? ' \u25C6' : ' ' + '\u2605'.repeat(ut.grade);
+            ctx.fillStyle = ut.def.color;
+            ctx.font = 'bold 16px DungGeunMo, Press Start 2P, monospace';
+            ctx.fillText(ut.def.name + gradeStr2, px + pw/2, py + 14);
+            ctx.fillStyle = '#00ff88';
+            ctx.font = '14px DungGeunMo, Press Start 2P, monospace';
+            ctx.fillText('Lv.' + utLvl, px + pw/2, py + 34);
+
+            // Current stats
+            let curDmg = ut.def.hidden ? Math.round(ut.def.dmg * (1+(utLvl-1)*0.25)) : Math.round(ut.def.dmg * Math.pow(1.5, ut.grade-1) * (1+(utLvl-1)*0.25));
+            let curSpd = ut.def.hidden ? (ut.def.spd * (1+(utLvl-1)*0.15)).toFixed(1) : (ut.def.spd * (1+(ut.grade-1)*0.1) * (1+(utLvl-1)*0.15)).toFixed(1);
+            let curRange = ut.def.hidden ? Math.round(ut.def.range * (1+(utLvl-1)*0.10)) : Math.round(ut.def.range * (1+(ut.grade-1)*0.05) * (1+(utLvl-1)*0.10));
+
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#aaa';
+            ctx.font = '12px DungGeunMo, Press Start 2P, monospace';
+            ctx.fillText('\uACF5\uACA9\uB825: ' + curDmg, px + 16, py + 58);
+            ctx.fillText('\uC18D\uB3C4: ' + curSpd + '/\uCD08', px + 16, py + 76);
+            ctx.fillText('\uC0AC\uAC70\uB9AC: ' + curRange, px + 16, py + 94);
+
+            if (utLvl < MAX_TOWER_LEVEL) {
+                // Next level stats (with relic discount)
+                let nLvl = utLvl + 1;
+                let nxtDmg = ut.def.hidden ? Math.round(ut.def.dmg * (1+(nLvl-1)*0.25)) : Math.round(ut.def.dmg * Math.pow(1.5, ut.grade-1) * (1+(nLvl-1)*0.25));
+                let nxtSpd = ut.def.hidden ? (ut.def.spd * (1+(nLvl-1)*0.15)).toFixed(1) : (ut.def.spd * (1+(ut.grade-1)*0.1) * (1+(nLvl-1)*0.15)).toFixed(1);
+                let nxtRange = ut.def.hidden ? Math.round(ut.def.range * (1+(nLvl-1)*0.10)) : Math.round(ut.def.range * (1+(ut.grade-1)*0.05) * (1+(nLvl-1)*0.10));
+
+                // Arrow and next values
+                ctx.fillStyle = '#00ff88';
+                ctx.textAlign = 'left';
+                ctx.fillText('\u2192 ' + nxtDmg, px + 160, py + 58);
+                ctx.fillText('\u2192 ' + nxtSpd + '/\uCD08', px + 160, py + 76);
+                ctx.fillText('\u2192 ' + nxtRange, px + 160, py + 94);
+
+                // Next level label
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#666';
+                ctx.font = '11px DungGeunMo, Press Start 2P, monospace';
+                ctx.fillText('\uD604\uC7AC Lv.' + utLvl + '  \u2192  Lv.' + nLvl, px + pw/2, py + 118);
+
+                // Upgrade button
+                let cost = getUpgradeCost(utLvl);
+                let upgDiscountVal = getRelicBonus('upgDiscount');
+                if (upgDiscountVal > 0) cost = Math.max(1, Math.floor(cost * (1 - upgDiscountVal)));
+                let canAfford = sp >= cost;
+                let ubX = px + 20, ubY = py + 142, ubW = pw - 40, ubH = 34;
+                ctx.fillStyle = canAfford ? '#003322' : '#222222';
+                ctx.fillRect(ubX, ubY, ubW, ubH);
+                ctx.strokeStyle = canAfford ? '#00ff88' : '#555555';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(ubX, ubY, ubW, ubH);
+                ctx.fillStyle = canAfford ? '#00ff88' : '#666666';
+                ctx.font = 'bold 14px DungGeunMo, Press Start 2P, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('\uC5C5\uADF8\uB808\uC774\uB4DC (' + cost + ' \uC5D0\uB108\uC9C0)', ubX + ubW/2, ubY + ubH/2);
+                window._upgradeBtnBounds = { x: ubX, y: ubY, w: ubW, h: ubH, gx: upgradePopup.gx, gy: upgradePopup.gy };
+            } else {
+                // Max level message
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#ffdd00';
+                ctx.font = 'bold 16px DungGeunMo, Press Start 2P, monospace';
+                ctx.fillText('\u2605 \uCD5C\uB300 \uB808\uBCA8! \u2605', px + pw/2, py + 130);
+                window._upgradeBtnBounds = null;
+            }
+
+            // Close button
+            let cbX = px + 20, cbY = py + ph - 50, cbW = pw - 40, cbH = 30;
+            ctx.fillStyle = '#1a1a4e';
+            ctx.fillRect(cbX, cbY, cbW, cbH);
+            ctx.strokeStyle = '#00ffff66';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(cbX, cbY, cbW, cbH);
+            ctx.fillStyle = '#00ffff';
+            ctx.font = '13px DungGeunMo, Press Start 2P, monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('\uB2EB\uAE30', cbX + cbW/2, cbY + cbH/2);
+            window._upgradeCloseBtnBounds = { x: cbX, y: cbY, w: cbW, h: cbH };
+        }
+    }
+
+    // Game Over
+    if (gameOver) {
+        ctx.fillStyle = 'rgba(0,0,0,0.7)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ff0044';
+        ctx.font = 'bold 48px DungGeunMo, Press Start 2P, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('\uAC8C\uC784 \uC624\uBC84', canvas.width / 2, canvas.height / 2 - 30);
+        ctx.fillStyle = '#00ffff';
+        ctx.font = '24px DungGeunMo, Press Start 2P, monospace';
+        if (stageMode && currentStage) {
+            ctx.fillText(currentStage.label + ' - 웨이브 ' + wave + '/' + currentStage.waves, canvas.width / 2, canvas.height / 2 + 20);
+        } else {
+            ctx.fillText('\uC6E8\uC774\uBE0C ' + wave + ' \uB3C4\uB2EC', canvas.width / 2, canvas.height / 2 + 20);
+        }
+        ctx.fillStyle = '#888';
+        ctx.font = '16px DungGeunMo, Press Start 2P, monospace';
+        if (stageMode) {
+            ctx.fillText('R키로 재도전 · L키로 스테이지 선택', canvas.width / 2, canvas.height / 2 + 60);
+        } else {
+            ctx.fillText('R\uD0A4\uB85C \uB2E4\uC2DC \uC2DC\uC791 \u00B7 L\uD0A4\uB85C \uB85C\uBE44', canvas.width / 2, canvas.height / 2 + 60);
+        }
+    }
+}
+
+// ── Input ──
+canvas.addEventListener('dblclick', function(e) {
+    if (gameOver) return;
+    if (upgradePopup) return;
+    let rect = canvas.getBoundingClientRect();
+    let mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let g = worldToGrid(mx, my);
+    if (!g || g.y === LANE_ROW || !grid[g.x][g.y]) return;
+    showUpgradePopup(g.x, g.y);
+});
+
+canvas.addEventListener('mousedown', function(e) {
+    if (gameOver) return;
+    let rect = canvas.getBoundingClientRect();
+    let mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+    // Upgrade popup click handling
+    if (upgradePopup) {
+        // Upgrade button
+        if (window._upgradeBtnBounds) {
+            let ub = window._upgradeBtnBounds;
+            if (mx >= ub.x && mx <= ub.x + ub.w && my >= ub.y && my <= ub.y + ub.h) {
+                if (isMultiplayer && !isHost) {
+                    sendInput({ type: 'upgrade', pos: {x: ub.gx, y: ub.gy} });
+                } else {
+                    upgradeTower(ub.gx, ub.gy, 'P1');
+                }
+                // Keep popup open to show updated stats
+                return;
+            }
+        }
+        // Close button
+        if (window._upgradeCloseBtnBounds) {
+            let cb = window._upgradeCloseBtnBounds;
+            if (mx >= cb.x && mx <= cb.x + cb.w && my >= cb.y && my <= cb.y + cb.h) {
+                closeUpgradePopup();
+                return;
+            }
+        }
+        // Click outside popup closes it
+        closeUpgradePopup();
+        return;
+    }
+
+    // 판매 버튼 클릭 체크
+    if (window._sellBtnBounds) {
+        let sb = window._sellBtnBounds;
+        if (mx >= sb.x && mx <= sb.x + sb.w && my >= sb.y && my <= sb.y + sb.h) {
+            if (isMultiplayer && !isHost) {
+                sendInput({ type: 'sell', pos: {x: sb.gx, y: sb.gy} });
+            } else {
+                sellTower(sb.gx, sb.gy, 'P1');
+            }
+            window._sellBtnBounds = null;
+            return;
+        }
+    }
+
+    let g = worldToGrid(mx, my);
+    if (!g || g.y === LANE_ROW) { selectedCell = null; return; }
+    if (grid[g.x][g.y]) {
+        selectedCell = g;
+        dragFrom = g;
+    } else {
+        selectedCell = null;
+    }
+});
+
+canvas.addEventListener('mousemove', function(e) {
+    let rect = canvas.getBoundingClientRect();
+    mouseX = e.clientX - rect.left;
+    mouseY = e.clientY - rect.top;
+});
+
+canvas.addEventListener('mouseup', function(e) {
+    if (!dragFrom) return;
+    let rect = canvas.getBoundingClientRect();
+    let mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    let g = worldToGrid(mx, my);
+    if (g && !(g.x === dragFrom.x && g.y === dragFrom.y) && g.y !== LANE_ROW) {
+        if (grid[g.x] && grid[g.x][g.y]) {
+            // Target cell has tower -> try merge
+            let a = grid[dragFrom.x][dragFrom.y];
+            let b = grid[g.x][g.y];
+            if (isMultiplayer && !isHost) {
+                sendInput({ type: 'mergeOrSwap', from: {x: dragFrom.x, y: dragFrom.y}, to: {x: g.x, y: g.y} });
+                selectedCell = g;
+            } else {
+                if (doMergeForPlayer(dragFrom.x, dragFrom.y, g.x, g.y, 'P1')) {
+                    selectedCell = g;
+                } else if (a && b) {
+                    // 합성 불가 → 위치 교환
+                    swapTowers(dragFrom.x, dragFrom.y, g.x, g.y, 'P1');
+                    selectedCell = g;
+                }
+            }
+        } else if (!grid[g.x][g.y]) {
+            // Target cell is empty -> move tower
+            if (isMultiplayer && !isHost) {
+                sendInput({ type: 'move', from: {x: dragFrom.x, y: dragFrom.y}, to: {x: g.x, y: g.y} });
+            } else {
+                moveTower(dragFrom.x, dragFrom.y, g.x, g.y, 'P1');
+            }
+            selectedCell = g;
+        }
+    }
+    dragFrom = null;
+});
+
+document.addEventListener('keydown', function(e) {
+    // Only handle keys if game area is visible
+    if (document.getElementById('gameArea').style.display === 'none') return;
+
+    if (e.key === 'r' || e.key === 'R') {
+        if (gameOver) {
+            if (stageMode && currentStage) {
+                // Restart same stage
+                startStage(currentStage.id);
+            } else {
+                // Legacy: Reset game
+                gameOver = false;
+                hp = 5; sp = 100; wave = 0; waveActive = false;
+                enemies = []; projectiles = []; particles = [];
+                enemiesToSpawn = []; selectedCell = null; bonusSP = 0;
+                shownHints = new Set(); currentHint = '';
+                initGrid();
+            }
+        }
+    }
+    if (e.key === 'l' || e.key === 'L') {
+        if (gameOver) {
+            if (stageMode) {
+                // Go back to stage select
+                document.getElementById('gameArea').style.display = 'none';
+                resetGameState();
+                showStageSelect();
+            } else {
+                // Go back to lobby
+                if (syncInterval) { clearInterval(syncInterval); syncInterval = null; }
+                if (peer) { peer.destroy(); peer = null; }
+                conn = null;
+                document.getElementById('gameArea').style.display = 'none';
+                document.getElementById('lobby').style.display = 'flex';
+                resetGameState();
+                isMultiplayer = false;
+                isHost = false;
+                myReady = false;
+                opponentReady = false;
+                opponentConnected = false;
+                opponentName = '';
+                peerReady = false;
+                showLobbyPhase('main');
+            }
+        }
+    }
+    if (e.key === ' ') { e.preventDefault(); summonTower(); }
+    if (e.key === 'w' || e.key === 'W') startNextWave();
+});
+
+// ── Game Loop ──
+function gameLoop(time) {
+    if (!time) time = performance.now();
+
+    // Only update/draw if game area is visible
+    if (document.getElementById('gameArea').style.display === 'none') {
+        lastTime = time;
+        return;
+    }
+
+    let dt = Math.min((time - lastTime) / 1000, 0.05);
+    if (dt <= 0) dt = 0.016;
+    lastTime = time;
+    update(dt);
+    draw();
+
+    // Hints
+    checkHints();
+    drawHints();
+}
+
+// ── Onboarding Hints ──
+let hints = [
+    { trigger: function() { return wave === 0 && sp >= 50 && !grid.flat().some(function(c){return c;}); }, msg: '\uD83D\uDCA1 Space\uD0A4 \uB610\uB294 \uC18C\uD658 \uBC84\uD2BC\uC73C\uB85C \uCCAB \uD0C0\uC6CC\uB97C \uC18C\uD658\uD558\uC138\uC694!' },
+    { trigger: function() { return wave === 0 && grid.flat().filter(function(c){return c;}).length >= 2 && !waveActive; }, msg: '\uD83D\uDCA1 W\uD0A4 \uB610\uB294 \uC6E8\uC774\uBE0C \uC2DC\uC791 \uBC84\uD2BC\uC744 \uB20C\uB7EC \uC804\uD22C\uB97C \uC2DC\uC791\uD558\uC138\uC694!' },
+    { trigger: function() { return grid.flat().filter(function(c){return c;}).length >= 4; }, msg: '\uD83D\uDCA1 \uAC19\uC740 \uD0C0\uC6CC\uB97C \uB4DC\uB798\uADF8\uD574\uC11C \uACA9\uCE58\uBA74 \uD569\uC131! \uAC19\uC740 \uC885\uB958 \uB4F1\uAE09 UP' },
+    { trigger: function() { return grid.flat().filter(function(c){return c && c.grade === 3;}).length >= 1; }, msg: '\uD83D\uDCA1 \u26053 \uD0C0\uC6CC 2\uAC1C\uB85C \uD788\uB4E0 \uCE90\uB9AD\uD130 \uC870\uD569! \uC624\uB978\uCABD \uD328\uB110 \uD655\uC778' },
+];
+let shownHints = new Set();
+let currentHint = '';
+
+function checkHints() {
+    for (let h of hints) {
+        let key = h.msg;
+        if (!shownHints.has(key) && h.trigger()) {
+            shownHints.add(key);
+            currentHint = h.msg;
+            setTimeout(function() { if (currentHint === h.msg) currentHint = ''; }, 5000);
+            return;
+        }
+    }
+}
+
+function drawHints() {
+    if (currentHint && !gameOver) {
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.font = '15px DungGeunMo, Press Start 2P, monospace';
+        let tw = ctx.measureText(currentHint).width;
+        ctx.fillRect(canvas.width/2 - tw/2 - 16, canvas.height - 52, tw + 32, 36);
+        ctx.strokeStyle = '#00ffff44';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(canvas.width/2 - tw/2 - 16, canvas.height - 52, tw + 32, 36);
+        ctx.fillStyle = '#00ffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(currentHint, canvas.width/2, canvas.height - 34);
+    }
+}
+
+// ══════════════════════════════════════════════════════════
+// CHIPTUNE BGM - Procedural Synthwave using Web Audio API
+// ══════════════════════════════════════════════════════════
+
+let bgmCtx = null;
+let bgmPlaying = false;
+let bgmMasterGain = null;
+let bgmNodes = [];
+let bgmStarted = false;
+
+function initBGM() {
+    if (bgmCtx) return;
+    bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    bgmMasterGain = bgmCtx.createGain();
+    bgmMasterGain.gain.value = 0.25;
+    bgmMasterGain.connect(bgmCtx.destination);
+
+    // Delay effect
+    let delay = bgmCtx.createDelay(0.5);
+    delay.delayTime.value = 0.375; // dotted eighth at 120 BPM
+    let delayGain = bgmCtx.createGain();
+    delayGain.gain.value = 0.25;
+    delay.connect(delayGain);
+    delayGain.connect(delay);
+    delayGain.connect(bgmMasterGain);
+
+    // Note frequencies (A minor pentatonic focus)
+    let noteFreqs = {
+        'A2': 110.00, 'C3': 130.81, 'D3': 146.83, 'E3': 164.81,
+        'A3': 220.00, 'C4': 261.63, 'D4': 293.66, 'E4': 329.63,
+        'G4': 392.00, 'A4': 440.00, 'C5': 523.25, 'D5': 587.33,
+        'E5': 659.26, 'G5': 783.99, 'A5': 880.00
+    };
+
+    // BPM 120 = 0.5s per beat
+    let bpm = 120;
+    let beatLen = 60 / bpm;
+    let barLen = beatLen * 4;
+    let loopLen = barLen * 4; // 4-bar loop = 8 seconds
+
+    function scheduleLoop() {
+        if (!bgmPlaying) return;
+        let now = bgmCtx.currentTime;
+
+        // === BASS LINE (sawtooth through lowpass) ===
+        let bassNotes = ['A2','A2','C3','C3','D3','D3','E3','E3',
+                         'A2','A2','C3','C3','D3','D3','C3','C3'];
+        for (let i = 0; i < bassNotes.length; i++) {
+            let t = now + i * beatLen;
+            let osc = bgmCtx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.value = noteFreqs[bassNotes[i]];
+            let bassFilter = bgmCtx.createBiquadFilter();
+            bassFilter.type = 'lowpass';
+            bassFilter.frequency.value = 400;
+            bassFilter.Q.value = 5;
+            let bassGain = bgmCtx.createGain();
+            bassGain.gain.setValueAtTime(0.18, t);
+            bassGain.gain.linearRampToValueAtTime(0.12, t + beatLen * 0.8);
+            bassGain.gain.linearRampToValueAtTime(0, t + beatLen * 0.95);
+            osc.connect(bassFilter);
+            bassFilter.connect(bassGain);
+            bassGain.connect(bgmMasterGain);
+            osc.start(t);
+            osc.stop(t + beatLen);
+            bgmNodes.push(osc);
+        }
+
+        // === LEAD ARPEGGIO (square wave) ===
+        let arpNotes = ['A4','C5','E5','A5','G5','E5','C5','A4',
+                        'A4','D5','E5','G5','E5','D5','C5','A4',
+                        'C5','E5','G5','A5','G5','E5','D5','C5',
+                        'A4','C5','D5','E5','D5','C5','A4','E4'];
+        let arpBeat = beatLen / 2; // eighth notes
+        for (let i = 0; i < arpNotes.length; i++) {
+            let t = now + i * arpBeat;
+            let osc = bgmCtx.createOscillator();
+            osc.type = 'square';
+            osc.frequency.value = noteFreqs[arpNotes[i]];
+            let arpGain = bgmCtx.createGain();
+            arpGain.gain.setValueAtTime(0, t);
+            arpGain.gain.linearRampToValueAtTime(0.06, t + 0.01);
+            arpGain.gain.linearRampToValueAtTime(0.04, t + arpBeat * 0.6);
+            arpGain.gain.linearRampToValueAtTime(0, t + arpBeat * 0.9);
+            let arpFilter = bgmCtx.createBiquadFilter();
+            arpFilter.type = 'lowpass';
+            arpFilter.frequency.value = 2000;
+            osc.connect(arpFilter);
+            arpFilter.connect(arpGain);
+            arpGain.connect(bgmMasterGain);
+            arpGain.connect(delay);
+            osc.start(t);
+            osc.stop(t + arpBeat);
+            bgmNodes.push(osc);
+        }
+
+        // === PERCUSSION (noise-based kicks and hi-hats) ===
+        for (let i = 0; i < 16; i++) {
+            let t = now + i * beatLen;
+            // Kick on beats 0, 2 of each bar (every 2 beats)
+            if (i % 2 === 0) {
+                let kickOsc = bgmCtx.createOscillator();
+                kickOsc.type = 'sine';
+                kickOsc.frequency.setValueAtTime(150, t);
+                kickOsc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
+                let kickGain = bgmCtx.createGain();
+                kickGain.gain.setValueAtTime(0.2, t);
+                kickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                kickOsc.connect(kickGain);
+                kickGain.connect(bgmMasterGain);
+                kickOsc.start(t);
+                kickOsc.stop(t + 0.2);
+                bgmNodes.push(kickOsc);
+            }
+            // Hi-hat on every beat
+            let bufSize = bgmCtx.sampleRate * 0.03;
+            let noiseBuf = bgmCtx.createBuffer(1, bufSize, bgmCtx.sampleRate);
+            let data = noiseBuf.getChannelData(0);
+            for (let s = 0; s < bufSize; s++) data[s] = Math.random() * 2 - 1;
+            let noise = bgmCtx.createBufferSource();
+            noise.buffer = noiseBuf;
+            let hhFilter = bgmCtx.createBiquadFilter();
+            hhFilter.type = 'highpass';
+            hhFilter.frequency.value = 8000;
+            let hhGain = bgmCtx.createGain();
+            let hhVol = (i % 2 === 0) ? 0.04 : 0.07;
+            hhGain.gain.setValueAtTime(hhVol, t);
+            hhGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+            noise.connect(hhFilter);
+            hhFilter.connect(hhGain);
+            hhGain.connect(bgmMasterGain);
+            noise.start(t);
+            noise.stop(t + 0.06);
+            bgmNodes.push(noise);
+
+            // Snare on beats 1, 3 (offbeats)
+            if (i % 2 === 1) {
+                let snBufSize = bgmCtx.sampleRate * 0.08;
+                let snBuf = bgmCtx.createBuffer(1, snBufSize, bgmCtx.sampleRate);
+                let snData = snBuf.getChannelData(0);
+                for (let s = 0; s < snBufSize; s++) snData[s] = Math.random() * 2 - 1;
+                let snNoise = bgmCtx.createBufferSource();
+                snNoise.buffer = snBuf;
+                let snFilter = bgmCtx.createBiquadFilter();
+                snFilter.type = 'bandpass';
+                snFilter.frequency.value = 3000;
+                snFilter.Q.value = 1;
+                let snGain = bgmCtx.createGain();
+                snGain.gain.setValueAtTime(0.08, t);
+                snGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                snNoise.connect(snFilter);
+                snFilter.connect(snGain);
+                snGain.connect(bgmMasterGain);
+                snNoise.start(t);
+                snNoise.stop(t + 0.12);
+                bgmNodes.push(snNoise);
+            }
+        }
+
+        // Schedule next loop
+        setTimeout(function() {
+            // Cleanup old nodes
+            bgmNodes = bgmNodes.filter(function(n) { try { return n.context.currentTime < now + loopLen + 1; } catch(e) { return false; } });
+            scheduleLoop();
+        }, (loopLen - 0.1) * 1000);
+    }
+
+    bgmPlaying = true;
+    bgmStarted = true;
+    scheduleLoop();
+    document.getElementById('bgmBtn').textContent = '\uD83D\uDD0A';
+    document.getElementById('bgmBtn').classList.add('active');
+}
+
+function toggleBGM() {
+    if (!bgmStarted) {
+        initBGM();
+        return;
+    }
+    if (bgmPlaying) {
+        bgmPlaying = false;
+        if (bgmMasterGain) bgmMasterGain.gain.linearRampToValueAtTime(0, bgmCtx.currentTime + 0.3);
+        document.getElementById('bgmBtn').textContent = '\uD83D\uDD07';
+        document.getElementById('bgmBtn').classList.remove('active');
+    } else {
+        bgmPlaying = true;
+        if (bgmMasterGain) bgmMasterGain.gain.linearRampToValueAtTime(0.25, bgmCtx.currentTime + 0.3);
+        // Restart scheduling
+        initBGM_restart();
+        document.getElementById('bgmBtn').textContent = '\uD83D\uDD0A';
+        document.getElementById('bgmBtn').classList.add('active');
+    }
+}
+
+function initBGM_restart() {
+    if (!bgmCtx || !bgmPlaying) return;
+    bgmMasterGain.gain.setValueAtTime(0.25, bgmCtx.currentTime);
+    // The scheduling loop checks bgmPlaying, so we reinitialize
+    let bpm = 120;
+    let beatLen = 60 / bpm;
+    let barLen = beatLen * 4;
+    let loopLen = barLen * 4;
+
+    let noteFreqs = {
+        'A2': 110.00, 'C3': 130.81, 'D3': 146.83, 'E3': 164.81,
+        'A3': 220.00, 'C4': 261.63, 'D4': 293.66, 'E4': 329.63,
+        'G4': 392.00, 'A4': 440.00, 'C5': 523.25, 'D5': 587.33,
+        'E5': 659.26, 'G5': 783.99, 'A5': 880.00
+    };
+
+    let delay = bgmCtx.createDelay(0.5);
+    delay.delayTime.value = 0.375;
+    let delayGain = bgmCtx.createGain();
+    delayGain.gain.value = 0.25;
+    delay.connect(delayGain);
+    delayGain.connect(delay);
+    delayGain.connect(bgmMasterGain);
+
+    function scheduleLoop() {
+        if (!bgmPlaying) return;
+        let now = bgmCtx.currentTime;
+
+        let bassNotes = ['A2','A2','C3','C3','D3','D3','E3','E3',
+                         'A2','A2','C3','C3','D3','D3','C3','C3'];
+        for (let i = 0; i < bassNotes.length; i++) {
+            let t = now + i * beatLen;
+            let osc = bgmCtx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.value = noteFreqs[bassNotes[i]];
+            let bassFilter = bgmCtx.createBiquadFilter();
+            bassFilter.type = 'lowpass';
+            bassFilter.frequency.value = 400;
+            bassFilter.Q.value = 5;
+            let bassGain = bgmCtx.createGain();
+            bassGain.gain.setValueAtTime(0.18, t);
+            bassGain.gain.linearRampToValueAtTime(0.12, t + beatLen * 0.8);
+            bassGain.gain.linearRampToValueAtTime(0, t + beatLen * 0.95);
+            osc.connect(bassFilter);
+            bassFilter.connect(bassGain);
+            bassGain.connect(bgmMasterGain);
+            osc.start(t);
+            osc.stop(t + beatLen);
+            bgmNodes.push(osc);
+        }
+
+        let arpNotes = ['A4','C5','E5','A5','G5','E5','C5','A4',
+                        'A4','D5','E5','G5','E5','D5','C5','A4',
+                        'C5','E5','G5','A5','G5','E5','D5','C5',
+                        'A4','C5','D5','E5','D5','C5','A4','E4'];
+        let arpBeat = beatLen / 2;
+        for (let i = 0; i < arpNotes.length; i++) {
+            let t = now + i * arpBeat;
+            let osc = bgmCtx.createOscillator();
+            osc.type = 'square';
+            osc.frequency.value = noteFreqs[arpNotes[i]];
+            let arpGain = bgmCtx.createGain();
+            arpGain.gain.setValueAtTime(0, t);
+            arpGain.gain.linearRampToValueAtTime(0.06, t + 0.01);
+            arpGain.gain.linearRampToValueAtTime(0.04, t + arpBeat * 0.6);
+            arpGain.gain.linearRampToValueAtTime(0, t + arpBeat * 0.9);
+            let arpFilter = bgmCtx.createBiquadFilter();
+            arpFilter.type = 'lowpass';
+            arpFilter.frequency.value = 2000;
+            osc.connect(arpFilter);
+            arpFilter.connect(arpGain);
+            arpGain.connect(bgmMasterGain);
+            arpGain.connect(delay);
+            osc.start(t);
+            osc.stop(t + arpBeat);
+            bgmNodes.push(osc);
+        }
+
+        for (let i = 0; i < 16; i++) {
+            let t = now + i * beatLen;
+            if (i % 2 === 0) {
+                let kickOsc = bgmCtx.createOscillator();
+                kickOsc.type = 'sine';
+                kickOsc.frequency.setValueAtTime(150, t);
+                kickOsc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
+                let kickGain = bgmCtx.createGain();
+                kickGain.gain.setValueAtTime(0.2, t);
+                kickGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                kickOsc.connect(kickGain);
+                kickGain.connect(bgmMasterGain);
+                kickOsc.start(t);
+                kickOsc.stop(t + 0.2);
+                bgmNodes.push(kickOsc);
+            }
+            let bufSize = bgmCtx.sampleRate * 0.03;
+            let noiseBuf = bgmCtx.createBuffer(1, bufSize, bgmCtx.sampleRate);
+            let dd = noiseBuf.getChannelData(0);
+            for (let s = 0; s < bufSize; s++) dd[s] = Math.random() * 2 - 1;
+            let noise = bgmCtx.createBufferSource();
+            noise.buffer = noiseBuf;
+            let hhFilter = bgmCtx.createBiquadFilter();
+            hhFilter.type = 'highpass';
+            hhFilter.frequency.value = 8000;
+            let hhGain = bgmCtx.createGain();
+            let hhVol = (i % 2 === 0) ? 0.04 : 0.07;
+            hhGain.gain.setValueAtTime(hhVol, t);
+            hhGain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+            noise.connect(hhFilter);
+            hhFilter.connect(hhGain);
+            hhGain.connect(bgmMasterGain);
+            noise.start(t);
+            noise.stop(t + 0.06);
+            bgmNodes.push(noise);
+            if (i % 2 === 1) {
+                let snBufSize = bgmCtx.sampleRate * 0.08;
+                let snBuf = bgmCtx.createBuffer(1, snBufSize, bgmCtx.sampleRate);
+                let snData = snBuf.getChannelData(0);
+                for (let s = 0; s < snBufSize; s++) snData[s] = Math.random() * 2 - 1;
+                let snNoise = bgmCtx.createBufferSource();
+                snNoise.buffer = snBuf;
+                let snFilter = bgmCtx.createBiquadFilter();
+                snFilter.type = 'bandpass';
+                snFilter.frequency.value = 3000;
+                snFilter.Q.value = 1;
+                let snGain = bgmCtx.createGain();
+                snGain.gain.setValueAtTime(0.08, t);
+                snGain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+                snNoise.connect(snFilter);
+                snFilter.connect(snGain);
+                snGain.connect(bgmMasterGain);
+                snNoise.start(t);
+                snNoise.stop(t + 0.12);
+                bgmNodes.push(snNoise);
+            }
+        }
+
+        setTimeout(function() {
+            bgmNodes = bgmNodes.filter(function(n) { try { return n.context.currentTime < now + loopLen + 1; } catch(e) { return false; } });
+            scheduleLoop();
+        }, (loopLen - 0.1) * 1000);
+    }
+
+    scheduleLoop();
+}
+
+// Auto-start BGM when game begins (not in lobby)
+let _origStartMulti = startMultiplayerGame;
+startMultiplayerGame = function() {
+    _origStartMulti();
+    if (!bgmStarted) initBGM();
+};
+let _origStartSolo = startSoloGame;
+startSoloGame = function() {
+    _origStartSolo();
+    if (!bgmStarted) initBGM();
+};
+
+// 이벤트 위임: 조합 버튼 클릭 (data-recipe 속성 사용)
+document.addEventListener('click', function(e) {
+    let btn = e.target.closest('.combo-btn');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    let idx = parseInt(btn.getAttribute('data-recipe'));
+    if (!isNaN(idx)) {
+        onComboClick(idx);
+    }
+});
+
+// ── Start: show lobby + start game loop ──
+// Load saved nickname
+if (saveData.nickname && saveData.nickname !== '플레이어') {
+    document.getElementById('nameInput').value = saveData.nickname;
+}
+showLobbyPhase('main');
+lastTime = performance.now();
+requestAnimationFrame(gameLoop);
+// Fallback: if rAF doesn't fire (headless/background tab), use setInterval
+setInterval(function() { gameLoop(performance.now()); }, 16);
+</script>
+</body>
+</html>
