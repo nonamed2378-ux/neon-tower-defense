@@ -858,9 +858,15 @@ button:disabled:hover { background: #1a1a4e; box-shadow: none; }
 }
 .stage-btns {
     display: flex;
-    gap: 12px;
+    flex-wrap: nowrap;
+    gap: 8px;
     justify-content: center;
     margin-top: 16px;
+}
+.stage-btns .lobby-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    white-space: nowrap;
 }
 
 /* === Rating Screen Overlay === */
