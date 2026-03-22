@@ -228,6 +228,234 @@ button:disabled:hover { background: #1a1a4e; box-shadow: none; }
 #lobbyBack:hover { color: #ccc; border-color: #aaa; }
 .hidden { display: none !important; }
 
+/* === Login Screen === */
+#loginScreen {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: #050510;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+#loginBox {
+    background: #0a0a2e;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 40px rgba(0,255,255,0.25), inset 0 0 60px rgba(0,255,255,0.03);
+    padding: 36px 40px;
+    width: 440px;
+    text-align: center;
+    position: relative;
+}
+#loginBox::before, #loginBox::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: #00ffff66;
+    border-style: solid;
+}
+#loginBox::before {
+    top: -1px; left: -1px;
+    border-width: 2px 0 0 2px;
+}
+#loginBox::after {
+    bottom: -1px; right: -1px;
+    border-width: 0 2px 2px 0;
+}
+.login-title-ko {
+    font-size: 20px;
+    color: #00ffff;
+    text-shadow: 0 0 20px rgba(0,255,255,0.6);
+    margin-bottom: 4px;
+    letter-spacing: 2px;
+}
+.login-title-en {
+    font-size: 13px;
+    color: #00ffff88;
+    text-shadow: 0 0 10px rgba(0,255,255,0.3);
+    margin-bottom: 24px;
+    letter-spacing: 1px;
+}
+.login-section-label {
+    font-size: 12px;
+    color: #888;
+    margin-bottom: 10px;
+    text-align: left;
+}
+.avatar-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 12px;
+    background: #0d0d35;
+    border: 1px solid #1a1a5e;
+}
+.avatar-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid transparent;
+    background: transparent;
+    border-radius: 4px;
+    transition: all 0.15s;
+    padding: 0;
+    line-height: 1;
+}
+.avatar-btn:hover {
+    border-color: #00ffff66;
+    background: #00ffff11;
+    box-shadow: 0 0 8px rgba(0,255,255,0.3);
+}
+.avatar-btn.selected {
+    border-color: #00ffff;
+    background: #00ffff22;
+    box-shadow: 0 0 12px rgba(0,255,255,0.5), 0 0 24px rgba(0,255,255,0.2);
+    animation: avatarPulse 1.8s ease-in-out infinite;
+}
+@keyframes avatarPulse {
+    0%,100% { box-shadow: 0 0 8px rgba(0,255,255,0.4), 0 0 20px rgba(0,255,255,0.15); }
+    50% { box-shadow: 0 0 16px rgba(0,255,255,0.8), 0 0 32px rgba(0,255,255,0.3); }
+}
+.login-nickname-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.login-nickname-label {
+    font-size: 13px;
+    color: #888;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+.login-input {
+    flex: 1;
+    background: #0d0d35;
+    border: 1px solid #00ffff55;
+    color: #00ffff;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 14px;
+    padding: 10px 14px;
+    outline: none;
+}
+.login-input:focus {
+    border-color: #00ffff;
+    box-shadow: 0 0 10px rgba(0,255,255,0.3);
+}
+.login-input::placeholder { color: #335; }
+.login-start-btn {
+    background: #1a1a4e;
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    padding: 13px 36px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+    margin-bottom: 24px;
+    transition: all 0.2s;
+    animation: loginStartPulse 1.8s ease-in-out infinite;
+}
+.login-start-btn:hover {
+    background: #2a2a6e;
+    box-shadow: 0 0 20px rgba(0,255,255,0.5);
+    animation: none;
+}
+@keyframes loginStartPulse {
+    0%,100% { box-shadow: 0 0 6px rgba(0,255,255,0.3); }
+    50% { box-shadow: 0 0 22px rgba(0,255,255,0.6); }
+}
+.login-divider {
+    border: none;
+    border-top: 1px solid #1a1a5e;
+    margin: 0 0 16px 0;
+}
+.login-stats-title {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 12px;
+    letter-spacing: 2px;
+}
+.login-stats-row {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+}
+.login-stat-item {
+    flex: 1;
+    background: #0d0d35;
+    border: 1px solid #1a1a5e;
+    padding: 8px 6px;
+    text-align: center;
+}
+.login-stat-icon {
+    font-size: 18px;
+    display: block;
+    margin-bottom: 4px;
+}
+.login-stat-value {
+    font-size: 13px;
+    color: #00ffff;
+    display: block;
+    margin-bottom: 2px;
+}
+.login-stat-label {
+    font-size: 9px;
+    color: #555;
+    display: block;
+}
+
+/* Profile change button in lobby */
+#profileChangeBtn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: 1px solid #333;
+    color: #555;
+    padding: 4px 10px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+}
+#profileChangeBtn:hover { color: #00ffff; border-color: #00ffff55; }
+
+/* Avatar display in lobby title */
+.lobby-avatar-display {
+    font-size: 28px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+}
+
+/* Stage select player info */
+#stagePlayerInfo {
+    font-size: 13px;
+    color: #00ffff88;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+#stagePlayerInfo .stage-avatar {
+    font-size: 20px;
+}
+
+/* Mobile responsive for login */
+@media (max-width: 768px) {
+    #loginBox {
+        width: 95vw;
+        padding: 20px;
+    }
+    .login-title-ko { font-size: 16px; }
+    .login-title-en { font-size: 11px; }
+    .avatar-btn { width: 36px; height: 36px; font-size: 20px; }
+}
+
 /* tooltip for disabled wave button */
 .tooltip-wrap {
     position: relative;
@@ -902,14 +1130,53 @@ body { overscroll-behavior: none; }
 </head>
 <body>
 
+<!-- ====== LOGIN / PROFILE SCREEN ====== -->
+<div id="loginScreen">
+<div id="loginBox">
+    <div class="login-title-ko">네온 타워디펜스</div>
+    <div class="login-title-en">NEON TOWER DEFENSE</div>
+
+    <div class="login-section-label">아바타 선택</div>
+    <div class="avatar-grid" id="avatarGrid"></div>
+
+    <div class="login-nickname-row">
+        <span class="login-nickname-label">닉네임:</span>
+        <input id="loginNameInput" class="login-input" type="text" maxlength="10" placeholder="이름 입력...">
+    </div>
+
+    <button class="login-start-btn" onclick="loginStart()">게임 시작</button>
+
+    <hr class="login-divider">
+    <div class="login-stats-title">── 게임 정보 ──</div>
+    <div class="login-stats-row">
+        <div class="login-stat-item">
+            <span class="login-stat-icon">💰</span>
+            <span class="login-stat-value" id="loginStatGold">0</span>
+            <span class="login-stat-label">골드</span>
+        </div>
+        <div class="login-stat-item">
+            <span class="login-stat-icon">📊</span>
+            <span class="login-stat-value" id="loginStatStage">-</span>
+            <span class="login-stat-label">최고 스테이지</span>
+        </div>
+        <div class="login-stat-item">
+            <span class="login-stat-icon">🏆</span>
+            <span class="login-stat-value" id="loginStatSRank">0</span>
+            <span class="login-stat-label">S등급</span>
+        </div>
+    </div>
+</div>
+</div>
+
 <!-- ====== LOBBY OVERLAY ====== -->
-<div id="lobby">
+<div id="lobby" style="display:none">
 <div id="lobbyBox">
     <button id="lobbyBack" onclick="lobbyGoBack()">&#x25C0; 뒤로</button>
+    <button id="profileChangeBtn" onclick="showLoginScreen()">👤 프로필 변경</button>
 
     <!-- Main Menu -->
     <div id="lobbyMain">
-        <div class="lobby-title">네온 타워디펜스</div>
+        <div class="lobby-title"><span class="lobby-avatar-display" id="lobbyAvatarDisplay">😎</span>네온 타워디펜스</div>
         <div class="lobby-subtitle">CO-OP TOWER DEFENSE</div>
         <div class="lobby-section">
             <label style="font-size:13px;color:#888;">닉네임</label><br>
@@ -960,6 +1227,7 @@ body { overscroll-behavior: none; }
         <div>
             <div class="lobby-title" style="font-size:22px;">스테이지 선택</div>
             <div class="stage-equipped" id="stageEquippedRelics"></div>
+            <div id="stagePlayerInfo"><span class="stage-avatar" id="stageAvatarDisplay">😎</span><span id="stagePlayerName">플레이어</span></div>
         </div>
         <div class="stage-gold" id="stageGoldDisplay">💰 0</div>
     </div>
@@ -1074,6 +1342,7 @@ body { overscroll-behavior: none; }
 // === SAVE SYSTEM ===
 let saveData = {
     nickname: '플레이어',
+    avatar: '😎',
     gold: 0,
     unlockedStage: 1,
     stageRatings: {},
@@ -1088,6 +1357,7 @@ function loadSave() {
         if (raw) {
             let parsed = JSON.parse(raw);
             saveData.nickname = parsed.nickname || '플레이어';
+            saveData.avatar = parsed.avatar || '😎';
             saveData.gold = parsed.gold || 0;
             saveData.unlockedStage = parsed.unlockedStage || 1;
             saveData.stageRatings = parsed.stageRatings || {};
@@ -1206,6 +1476,78 @@ function getRatingColor(rating) {
     return '#888888';
 }
 
+// === LOGIN SCREEN ===
+const LOGIN_AVATARS = ['😎','🤖','👾','🎮','⚔️','🐉','🔥','💎','⭐','🌙','👑','🎯'];
+let selectedAvatar = saveData.avatar || '😎';
+
+function initLoginScreen() {
+    // Build avatar grid
+    let grid = document.getElementById('avatarGrid');
+    let html = '';
+    for (let i = 0; i < LOGIN_AVATARS.length; i++) {
+        let av = LOGIN_AVATARS[i];
+        let sel = av === selectedAvatar ? ' selected' : '';
+        html += '<button class="avatar-btn' + sel + '" onclick="selectAvatar(\'' + i + '\')" title="' + av + '">' + av + '</button>';
+    }
+    grid.innerHTML = html;
+
+    // Fill nickname
+    let ni = document.getElementById('loginNameInput');
+    ni.value = (saveData.nickname && saveData.nickname !== '플레이어') ? saveData.nickname : '';
+
+    // Fill stats
+    document.getElementById('loginStatGold').textContent = saveData.gold.toLocaleString();
+    let highestStage = 0;
+    let sRankCount = 0;
+    let ratingKeys = Object.keys(saveData.stageRatings);
+    for (let i = 0; i < ratingKeys.length; i++) {
+        let sid = parseInt(ratingKeys[i]);
+        if (sid > highestStage) highestStage = sid;
+        if (saveData.stageRatings[ratingKeys[i]] === 'S') sRankCount++;
+    }
+    document.getElementById('loginStatStage').textContent = highestStage > 0 ? highestStage + '단계' : '-';
+    document.getElementById('loginStatSRank').textContent = sRankCount + '개';
+}
+
+function selectAvatar(indexStr) {
+    let idx = parseInt(indexStr);
+    selectedAvatar = LOGIN_AVATARS[idx];
+    // Update button states
+    let btns = document.getElementById('avatarGrid').querySelectorAll('.avatar-btn');
+    for (let i = 0; i < btns.length; i++) {
+        btns[i].classList.toggle('selected', i === idx);
+    }
+}
+
+function loginStart() {
+    let name = document.getElementById('loginNameInput').value.trim();
+    if (!name) name = '플레이어';
+    if (name.length > 10) name = name.slice(0, 10);
+    saveData.nickname = name;
+    saveData.avatar = selectedAvatar;
+    writeSave();
+    // Apply to lobby
+    document.getElementById('nameInput').value = name;
+    playerName = name;
+    updateLobbyAvatar();
+    // Hide login, show lobby
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('lobby').style.display = 'flex';
+    showLobbyPhase('main');
+}
+
+function showLoginScreen() {
+    document.getElementById('lobby').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    selectedAvatar = saveData.avatar || '😎';
+    initLoginScreen();
+}
+
+function updateLobbyAvatar() {
+    let el = document.getElementById('lobbyAvatarDisplay');
+    if (el) el.textContent = saveData.avatar || '😎';
+}
+
 // === STAGE SELECT UI ===
 function showStageSelect() {
     document.getElementById('lobby').style.display = 'none';
@@ -1241,6 +1583,10 @@ function renderStageGrid() {
     }
     gridEl.innerHTML = html;
     document.getElementById('stageGoldDisplay').textContent = '💰 ' + saveData.gold;
+    let stageAvEl = document.getElementById('stageAvatarDisplay');
+    if (stageAvEl) stageAvEl.textContent = saveData.avatar || '😎';
+    let stageNameEl = document.getElementById('stagePlayerName');
+    if (stageNameEl) stageNameEl.textContent = saveData.nickname || '플레이어';
     // Show equipped relics with levels
     let eqHtml = '';
     for (let i = 0; i < saveData.equippedRelics.length; i++) {
@@ -1750,7 +2096,8 @@ function updatePlayerList() {
         p1Badge = '(호스트)';
         p1Ready = opponentReady;
     }
-    html += '<div class="lobby-player"><span><span class="name">' + escHtml(p1Name) + '</span><span class="badge"> ' + p1Badge + '</span></span>';
+    let myAv = saveData.avatar || '😎';
+    html += '<div class="lobby-player"><span><span style="font-size:16px;margin-right:4px;">' + myAv + '</span><span class="name">' + escHtml(p1Name) + '</span><span class="badge"> ' + p1Badge + '</span></span>';
     if (isHost || opponentConnected) {
         html += '<span class="' + (p1Ready ? 'ready' : 'not-ready') + '">' + (p1Ready ? '준비 완료' : '대기 중') + '</span>';
     }
@@ -1767,7 +2114,7 @@ function updatePlayerList() {
         p2Badge = '(게스트)';
         p2Ready = opponentReady;
     }
-    html += '<div class="lobby-player"><span><span class="name">' + escHtml(p2Name) + '</span><span class="badge"> ' + p2Badge + '</span></span>';
+    html += '<div class="lobby-player"><span><span style="font-size:16px;margin-right:4px;">🎮</span><span class="name">' + escHtml(p2Name) + '</span><span class="badge"> ' + p2Badge + '</span></span>';
     if (!isHost || opponentConnected) {
         html += '<span class="' + (p2Ready ? 'ready' : 'not-ready') + '">' + (p2Ready ? '준비 완료' : '대기 중') + '</span>';
     }
@@ -4124,7 +4471,12 @@ function draw() {
     ctx.font = 'bold 20px DungGeunMo, Press Start 2P, monospace';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#ff4444';
-    ctx.fillText('\u2665 HP: ' + hp, 10, 30);
+    let hudAvatar = saveData.avatar || '😎';
+    ctx.font = '18px DungGeunMo, monospace';
+    ctx.fillText(hudAvatar, 10, 28);
+    ctx.font = 'bold 20px DungGeunMo, Press Start 2P, monospace';
+    ctx.fillStyle = '#ff4444';
+    ctx.fillText('\u2665 HP: ' + hp, 36, 30);
     ctx.fillStyle = '#00ffff';
     ctx.textAlign = 'center';
     let waveText;
@@ -5249,12 +5601,23 @@ startStage = function(stageId) {
     setTimeout(resizeCanvas, 50);
 };
 
-// ── Start: show lobby + start game loop ──
-// Load saved nickname
+// ── Start: login screen or lobby ──
+// If player has a saved nickname (not default), skip to lobby
 if (saveData.nickname && saveData.nickname !== '플레이어') {
+    // Returning player - go straight to lobby
     document.getElementById('nameInput').value = saveData.nickname;
+    playerName = saveData.nickname;
+    selectedAvatar = saveData.avatar || '😎';
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('lobby').style.display = 'flex';
+    updateLobbyAvatar();
+    showLobbyPhase('main');
+} else {
+    // New player - show login screen
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('lobby').style.display = 'none';
+    initLoginScreen();
 }
-showLobbyPhase('main');
 lastTime = performance.now();
 requestAnimationFrame(gameLoop);
 // Fallback: if rAF doesn't fire (headless/background tab), use setInterval
