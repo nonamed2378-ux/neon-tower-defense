@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>네온 타워디펜스 - 멀티플레이어</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -1126,6 +1127,240 @@ body { overscroll-behavior: none; }
     .rating-letter { font-size: 64px; }
     .rating-btns { flex-direction: column; gap: 8px; }
 }
+
+/* === Profile Popup === */
+#profilePopup {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.profile-box {
+    background: #0a0a2e;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 40px rgba(0,255,255,0.25), inset 0 0 60px rgba(0,255,255,0.03);
+    padding: 28px 32px;
+    width: 520px;
+    max-height: 88vh;
+    overflow-y: auto;
+    text-align: center;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: #00ffff44 #0a0a2e;
+}
+.profile-box::-webkit-scrollbar { width: 5px; }
+.profile-box::-webkit-scrollbar-track { background: #0a0a2e; }
+.profile-box::-webkit-scrollbar-thumb { background: #00ffff44; border-radius: 3px; }
+.profile-box h2 {
+    color: #00ffff;
+    text-shadow: 0 0 15px rgba(0,255,255,0.5);
+    font-size: 18px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #00ffff44;
+    padding-bottom: 10px;
+}
+.profile-box h3 {
+    color: #ff00ff;
+    text-shadow: 0 0 10px rgba(255,0,255,0.4);
+    font-size: 13px;
+    margin: 16px 0 8px 0;
+    border-bottom: 1px solid #ff00ff33;
+    padding-bottom: 6px;
+    text-align: left;
+}
+.profile-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.profile-avatar {
+    font-size: 40px;
+}
+.profile-name {
+    font-size: 18px;
+    color: #00ffff;
+    text-shadow: 0 0 10px rgba(0,255,255,0.4);
+}
+.profile-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.stat-card {
+    background: #0d0d35;
+    border: 1px solid #1a1a5e;
+    padding: 10px 6px;
+    text-align: center;
+}
+.stat-value {
+    font-size: 16px;
+    color: #00ffff;
+    display: block;
+    margin-bottom: 4px;
+    text-shadow: 0 0 8px rgba(0,255,255,0.4);
+}
+.stat-label {
+    font-size: 9px;
+    color: #555;
+    display: block;
+}
+.stage-records {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+.record-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #0d0d35;
+    border: 1px solid #1a1a5e;
+    padding: 6px 12px;
+    font-size: 12px;
+}
+.record-row.locked {
+    opacity: 0.4;
+}
+.record-stage {
+    color: #aaa;
+}
+.record-rating {
+    font-size: 14px;
+    font-weight: bold;
+}
+.record-rating.rating-S { color: #ffdd00; text-shadow: 0 0 8px rgba(255,221,0,0.5); }
+.record-rating.rating-A { color: #00ffff; text-shadow: 0 0 8px rgba(0,255,255,0.5); }
+.record-rating.rating-B { color: #00ff88; text-shadow: 0 0 8px rgba(0,255,136,0.5); }
+.record-rating.rating-C { color: #888888; }
+.profile-relics {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-bottom: 8px;
+}
+.profile-relic-item {
+    background: #0d0d35;
+    border: 1px solid #ffdd0066;
+    padding: 6px 10px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #ffdd00;
+}
+.profile-relic-item .relic-lv {
+    font-size: 9px;
+    color: #00ff88;
+}
+.profile-close-btn {
+    margin-top: 16px;
+    background: #1a1a4e;
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    padding: 10px 30px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 13px;
+    cursor: pointer;
+}
+.profile-close-btn:hover {
+    background: #2a2a6e;
+    box-shadow: 0 0 15px rgba(0,255,255,0.3);
+}
+@media (max-width: 768px) {
+    .profile-box { width: 95vw; padding: 16px; }
+    .profile-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* === Leaderboard Popup === */
+#leaderboardPopup {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.leaderboard-box {
+    background: #0a0a2e;
+    border: 2px solid #ffdd00;
+    box-shadow: 0 0 40px rgba(255,221,0,0.2), inset 0 0 60px rgba(255,221,0,0.03);
+    padding: 28px 32px;
+    width: 480px;
+    max-height: 88vh;
+    overflow-y: auto;
+    text-align: center;
+    scrollbar-width: thin;
+    scrollbar-color: #ffdd0044 #0a0a2e;
+}
+.leaderboard-box::-webkit-scrollbar { width: 5px; }
+.leaderboard-box::-webkit-scrollbar-track { background: #0a0a2e; }
+.leaderboard-box::-webkit-scrollbar-thumb { background: #ffdd0044; border-radius: 3px; }
+.leaderboard-box h2 {
+    color: #ffdd00;
+    text-shadow: 0 0 15px rgba(255,221,0,0.5);
+    font-size: 18px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #ffdd0044;
+    padding-bottom: 10px;
+}
+.lb-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #0d0d35;
+    border: 1px solid #1a1a5e;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    font-size: 11px;
+}
+.lb-row.lb-me {
+    border-color: #00ffff66;
+    background: #0a0a3a;
+}
+.lb-rank {
+    color: #ffdd00;
+    font-size: 13px;
+    width: 28px;
+    flex-shrink: 0;
+    text-align: center;
+}
+.lb-rank.rank-1 { color: #ffd700; font-size: 16px; }
+.lb-rank.rank-2 { color: #c0c0c0; font-size: 14px; }
+.lb-rank.rank-3 { color: #cd7f32; font-size: 14px; }
+.lb-avatar { font-size: 20px; flex-shrink: 0; }
+.lb-name { flex: 1; color: #00ffff; text-align: left; }
+.lb-stats { color: #888; font-size: 10px; text-align: right; }
+.lb-loading {
+    color: #555;
+    font-size: 13px;
+    padding: 24px 0;
+}
+.lb-close-btn {
+    margin-top: 16px;
+    background: #1a1a4e;
+    color: #ffdd00;
+    border: 2px solid #ffdd00;
+    padding: 10px 30px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 13px;
+    cursor: pointer;
+}
+.lb-close-btn:hover {
+    background: #2a2a4e;
+    box-shadow: 0 0 15px rgba(255,221,0,0.3);
+}
+@media (max-width: 768px) {
+    .leaderboard-box { width: 95vw; padding: 16px; }
+}
 </style>
 </head>
 <body>
@@ -1234,6 +1469,8 @@ body { overscroll-behavior: none; }
     <div class="stage-grid" id="stageGrid"></div>
     <div class="stage-btns">
         <button class="lobby-btn" onclick="openRelicShop()">🔮 유물 상점</button>
+        <button class="lobby-btn" onclick="openProfile()" style="border-color:#00ffff88;color:#00ffff;">📊 내 기록</button>
+        <button class="lobby-btn" onclick="openLeaderboard()" style="border-color:#ffdd0088;color:#ffdd00;">🏅 랭킹</button>
         <button class="lobby-btn" onclick="backToLobbyFromStage()">◀ 로비로</button>
     </div>
 </div>
@@ -1265,6 +1502,49 @@ body { overscroll-behavior: none; }
     <div style="margin-top:16px;">
         <button class="lobby-btn" onclick="closeRelicShop()">◀ 돌아가기</button>
     </div>
+</div>
+</div>
+
+<!-- ====== PROFILE POPUP ====== -->
+<div id="profilePopup" style="display:none">
+<div class="profile-box">
+    <h2>📊 플레이어 기록</h2>
+    <div class="profile-header">
+        <span class="profile-avatar" id="profileAvatarDisplay">😎</span>
+        <span class="profile-name" id="profileNameDisplay">닉네임</span>
+    </div>
+    <div class="profile-stats">
+        <div class="stat-card">
+            <span class="stat-value" id="profileStatGold">0</span>
+            <span class="stat-label">💰 골드</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" id="profileStatStage">-</span>
+            <span class="stat-label">📊 최고 스테이지</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" id="profileStatSRank">0</span>
+            <span class="stat-label">🏆 S등급</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-value" id="profileStatGames">0</span>
+            <span class="stat-label">🎮 총 게임</span>
+        </div>
+    </div>
+    <h3>스테이지 기록</h3>
+    <div class="stage-records" id="profileStageRecords"></div>
+    <h3>장착 유물</h3>
+    <div class="profile-relics" id="profileRelics"></div>
+    <button class="profile-close-btn" onclick="closeProfile()">닫기</button>
+</div>
+</div>
+
+<!-- ====== LEADERBOARD POPUP ====== -->
+<div id="leaderboardPopup" style="display:none">
+<div class="leaderboard-box">
+    <h2>🏅 랭킹 TOP 10</h2>
+    <div id="leaderboardContent" class="lb-loading">불러오는 중...</div>
+    <button class="lb-close-btn" onclick="closeLeaderboard()">닫기</button>
 </div>
 </div>
 
@@ -1349,6 +1629,8 @@ let saveData = {
     ownedRelics: [],
     equippedRelics: [],
     relicLevels: {},
+    totalGames: 0,
+    totalClears: 0,
 };
 
 function loadSave() {
@@ -1364,6 +1646,8 @@ function loadSave() {
             saveData.ownedRelics = parsed.ownedRelics || [];
             saveData.equippedRelics = parsed.equippedRelics || [];
             saveData.relicLevels = parsed.relicLevels || {};
+            saveData.totalGames = parsed.totalGames || 0;
+            saveData.totalClears = parsed.totalClears || 0;
             // Validate equippedRelics max 3
             if (saveData.equippedRelics.length > 3) saveData.equippedRelics = saveData.equippedRelics.slice(0, 3);
         }
@@ -1377,6 +1661,126 @@ function writeSave() {
 }
 
 loadSave();
+
+// === SUPABASE CLIENT ===
+const SUPABASE_URL = 'https://ibqfoibpofwoevttuoeu.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlicWZvaWJwb2Z3b2V2dHR1b2V1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3Mzk2ODUsImV4cCI6MjA4NjMxNTY4NX0.ucgOQhKvRqMLqTuirCxUVQdX8dfjHcKkRYFZl0b-hHg';
+let supabaseClient = null;
+
+function initSupabase() {
+    if (typeof supabase !== 'undefined' && supabase.createClient) {
+        supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    }
+}
+
+// === SERVER SAVE/LOAD FUNCTIONS ===
+
+async function saveToServer() {
+    if (!supabaseClient || !saveData.nickname || saveData.nickname === '플레이어') return;
+
+    let payload = {
+        nickname: saveData.nickname,
+        avatar: saveData.avatar || '😎',
+        gold: saveData.gold,
+        unlocked_stage: saveData.unlockedStage,
+        stage_ratings: saveData.stageRatings || {},
+        owned_relics: saveData.ownedRelics || [],
+        equipped_relics: saveData.equippedRelics || [],
+        relic_levels: saveData.relicLevels || {},
+        highest_wave: getHighestWave(),
+        total_games: saveData.totalGames || 0,
+        total_clears: saveData.totalClears || 0,
+        s_rank_count: getSRankCount(),
+        updated_at: new Date().toISOString()
+    };
+
+    let { error } = await supabaseClient
+        .from('td_players')
+        .upsert(payload, { onConflict: 'nickname' });
+
+    if (error) console.log('Server save error:', error.message);
+}
+
+async function loadFromServer(nickname) {
+    if (!supabaseClient || !nickname) return null;
+
+    let { data, error } = await supabaseClient
+        .from('td_players')
+        .select('*')
+        .eq('nickname', nickname)
+        .single();
+
+    if (error || !data) return null;
+    return data;
+}
+
+async function syncWithServer() {
+    if (!saveData.nickname || saveData.nickname === '플레이어') return;
+
+    let serverData = await loadFromServer(saveData.nickname);
+    if (serverData) {
+        if (serverData.unlocked_stage > saveData.unlockedStage) {
+            saveData.unlockedStage = serverData.unlocked_stage;
+        }
+        if (serverData.gold > saveData.gold) {
+            saveData.gold = serverData.gold;
+        }
+        if (serverData.stage_ratings) {
+            let ratingOrder = ['S','A','B','C'];
+            for (let stg in serverData.stage_ratings) {
+                let serverRank = serverData.stage_ratings[stg];
+                let localRank = saveData.stageRatings[stg];
+                if (!localRank || ratingOrder.indexOf(serverRank) < ratingOrder.indexOf(localRank)) {
+                    saveData.stageRatings[stg] = serverRank;
+                }
+            }
+        }
+        if (serverData.owned_relics) {
+            for (let r of serverData.owned_relics) {
+                if (!saveData.ownedRelics.includes(r)) saveData.ownedRelics.push(r);
+            }
+        }
+        if (serverData.relic_levels) {
+            for (let r in serverData.relic_levels) {
+                if (!saveData.relicLevels[r] || serverData.relic_levels[r] > saveData.relicLevels[r]) {
+                    saveData.relicLevels[r] = serverData.relic_levels[r];
+                }
+            }
+        }
+        if (serverData.total_games > (saveData.totalGames || 0)) saveData.totalGames = serverData.total_games;
+        if (serverData.total_clears > (saveData.totalClears || 0)) saveData.totalClears = serverData.total_clears;
+        saveData.avatar = serverData.avatar || saveData.avatar;
+        writeSave();
+    }
+    await saveToServer();
+}
+
+function getHighestWave() {
+    let max = 0;
+    for (let s in saveData.stageRatings) {
+        if (parseInt(s) > max) max = parseInt(s);
+    }
+    return max;
+}
+
+function getSRankCount() {
+    let count = 0;
+    for (let s in saveData.stageRatings) {
+        if (saveData.stageRatings[s] === 'S') count++;
+    }
+    return count;
+}
+
+async function loadLeaderboard() {
+    if (!supabaseClient) return [];
+    let { data } = await supabaseClient
+        .from('td_players')
+        .select('nickname, avatar, unlocked_stage, s_rank_count, gold')
+        .order('unlocked_stage', { ascending: false })
+        .order('s_rank_count', { ascending: false })
+        .limit(10);
+    return data || [];
+}
 
 // === STAGE DEFINITIONS ===
 const STAGES = [
@@ -1432,6 +1836,7 @@ function upgradeRelic(relicId) {
     let currentLevel = (saveData.relicLevels[relicId]) || 1;
     saveData.relicLevels[relicId] = currentLevel + 1;
     writeSave();
+    saveToServer(); // non-blocking
     let rd = getRelicDef(relicId);
     showToast(rd.name + ' Lv.' + (currentLevel + 1) + ' 업그레이드!', 1500);
     renderRelicShop();
@@ -1534,6 +1939,8 @@ function loginStart() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('lobby').style.display = 'flex';
     showLobbyPhase('main');
+    // Sync with server (non-blocking)
+    syncWithServer();
 }
 
 function showLoginScreen() {
@@ -1604,6 +2011,108 @@ function backToLobbyFromStage() {
     showLobbyPhase('main');
 }
 
+// === PROFILE UI ===
+function openProfile() {
+    // Populate data from saveData
+    document.getElementById('profileAvatarDisplay').textContent = saveData.avatar || '😎';
+    document.getElementById('profileNameDisplay').textContent = saveData.nickname || '플레이어';
+    document.getElementById('profileStatGold').textContent = (saveData.gold || 0).toLocaleString();
+    document.getElementById('profileStatGames').textContent = (saveData.totalGames || 0).toLocaleString();
+
+    // Highest stage & S rank count
+    let highestStage = 0;
+    let sRankCount = 0;
+    for (let s in saveData.stageRatings) {
+        let sid = parseInt(s);
+        if (sid > highestStage) highestStage = sid;
+        if (saveData.stageRatings[s] === 'S') sRankCount++;
+    }
+    document.getElementById('profileStatStage').textContent = highestStage > 0 ? highestStage + '단계' : '-';
+    document.getElementById('profileStatSRank').textContent = sRankCount;
+
+    // Stage records table
+    let recHtml = '';
+    for (let i = 0; i < STAGES.length; i++) {
+        let s = STAGES[i];
+        let unlocked = s.id <= saveData.unlockedStage;
+        let rating = saveData.stageRatings[s.id] || '';
+        let rClass = rating ? 'rating-' + rating : '';
+        let rText = rating ? rating : (unlocked ? '-' : '🔒');
+        recHtml += '<div class="record-row' + (unlocked ? '' : ' locked') + '">';
+        recHtml += '<span class="record-stage">' + s.id + '. ' + s.label + '</span>';
+        recHtml += '<span class="record-rating ' + rClass + '">' + rText + '</span>';
+        recHtml += '</div>';
+    }
+    document.getElementById('profileStageRecords').innerHTML = recHtml;
+
+    // Equipped relics
+    let relicHtml = '';
+    if (saveData.equippedRelics.length === 0) {
+        relicHtml = '<span style="color:#555;font-size:11px;">장착된 유물 없음</span>';
+    } else {
+        for (let i = 0; i < saveData.equippedRelics.length; i++) {
+            let rid = saveData.equippedRelics[i];
+            let rd = getRelicDef(rid);
+            let rlvl = (saveData.relicLevels[rid]) || 1;
+            if (rd) {
+                relicHtml += '<div class="profile-relic-item">';
+                relicHtml += '<span>' + rd.icon + '</span>';
+                relicHtml += '<span>' + rd.name + '</span>';
+                relicHtml += '<span class="relic-lv">Lv.' + rlvl + '</span>';
+                relicHtml += '</div>';
+            }
+        }
+    }
+    document.getElementById('profileRelics').innerHTML = relicHtml;
+
+    document.getElementById('profilePopup').style.display = 'flex';
+}
+
+function closeProfile() {
+    document.getElementById('profilePopup').style.display = 'none';
+}
+
+// === LEADERBOARD UI ===
+function openLeaderboard() {
+    document.getElementById('leaderboardPopup').style.display = 'flex';
+    document.getElementById('leaderboardContent').innerHTML = '<div class="lb-loading">불러오는 중...</div>';
+    loadLeaderboard().then(function(data) {
+        renderLeaderboard(data);
+    }).catch(function() {
+        document.getElementById('leaderboardContent').innerHTML = '<div class="lb-loading" style="color:#ff4444;">랭킹을 불러올 수 없습니다.</div>';
+    });
+}
+
+function closeLeaderboard() {
+    document.getElementById('leaderboardPopup').style.display = 'none';
+}
+
+function renderLeaderboard(data) {
+    if (!data || data.length === 0) {
+        document.getElementById('leaderboardContent').innerHTML = '<div class="lb-loading">랭킹 데이터가 없습니다.</div>';
+        return;
+    }
+    let html = '';
+    for (let i = 0; i < data.length; i++) {
+        let p = data[i];
+        let rankNum = i + 1;
+        let rankClass = 'lb-rank' + (rankNum <= 3 ? ' rank-' + rankNum : '');
+        let rankIcon = rankNum === 1 ? '🥇' : (rankNum === 2 ? '🥈' : (rankNum === 3 ? '🥉' : '#' + rankNum));
+        let isMe = (p.nickname === saveData.nickname);
+        html += '<div class="lb-row' + (isMe ? ' lb-me' : '') + '">';
+        html += '<span class="' + rankClass + '">' + rankIcon + '</span>';
+        html += '<span class="lb-avatar">' + (p.avatar || '😎') + '</span>';
+        html += '<span class="lb-name">' + escHtml(p.nickname || '') + (isMe ? ' <span style="color:#00ffff;font-size:9px;">(나)</span>' : '') + '</span>';
+        html += '<span class="lb-stats">';
+        html += '스테이지' + (p.unlocked_stage || 1) + ' ';
+        html += 'S×' + (p.s_rank_count || 0) + ' ';
+        html += '💰' + ((p.gold || 0).toLocaleString());
+        html += '</span>';
+        html += '</div>';
+    }
+    document.getElementById('leaderboardContent').innerHTML = html;
+}
+
 function startStage(stageId) {
     let stage = null;
     for (let i = 0; i < STAGES.length; i++) {
@@ -1615,6 +2124,9 @@ function startStage(stageId) {
     document.getElementById('stageSelect').classList.add('hidden');
     document.getElementById('gameArea').style.display = '';
     document.getElementById('waveTooltip').style.display = 'none';
+    // Increment total games counter
+    saveData.totalGames = (saveData.totalGames || 0) + 1;
+    writeSave();
     resetGameState();
     // Apply relic bonuses at start
     let startSPBonus = getRelicBonus('startSP');
@@ -1672,7 +2184,11 @@ function onStageClear() {
     if (currentStage.id < 10 && currentStage.id >= saveData.unlockedStage) {
         saveData.unlockedStage = currentStage.id + 1;
     }
+    // Increment clears counter
+    saveData.totalClears = (saveData.totalClears || 0) + 1;
     writeSave();
+    // Save to server (non-blocking)
+    saveToServer();
     showRatingScreen(rating, goldEarned);
 }
 
@@ -1775,6 +2291,7 @@ function onRelicCardClick(relicId) {
         saveData.gold -= rd.cost;
         saveData.ownedRelics.push(relicId);
         writeSave();
+        saveToServer(); // non-blocking
         showToast(rd.name + ' 구매 완료!', 1500);
         renderRelicShop();
     } else if (equipped) {
@@ -1782,6 +2299,7 @@ function onRelicCardClick(relicId) {
         let idx = saveData.equippedRelics.indexOf(relicId);
         if (idx !== -1) saveData.equippedRelics.splice(idx, 1);
         writeSave();
+        saveToServer(); // non-blocking
         renderRelicShop();
     } else {
         // Equip
@@ -1791,6 +2309,7 @@ function onRelicCardClick(relicId) {
         }
         saveData.equippedRelics.push(relicId);
         writeSave();
+        saveToServer(); // non-blocking
         renderRelicShop();
     }
 }
@@ -5601,6 +6120,9 @@ startStage = function(stageId) {
     setTimeout(resizeCanvas, 50);
 };
 
+// Initialize Supabase client
+initSupabase();
+
 // ── Start: login screen or lobby ──
 // If player has a saved nickname (not default), skip to lobby
 if (saveData.nickname && saveData.nickname !== '플레이어') {
@@ -5612,6 +6134,8 @@ if (saveData.nickname && saveData.nickname !== '플레이어') {
     document.getElementById('lobby').style.display = 'flex';
     updateLobbyAvatar();
     showLobbyPhase('main');
+    // Sync returning player's data with server (non-blocking)
+    syncWithServer();
 } else {
     // New player - show login screen
     document.getElementById('loginScreen').style.display = 'flex';
