@@ -1050,6 +1050,11 @@ body { overscroll-behavior: none; }
         align-items: center;
         flex-wrap: wrap;
     }
+    #gameCanvas { order: 1; }
+    #dpsPanelToggle { order: 2; }
+    #dpsPanel { order: 3; }
+    #recipePanelToggle { order: 4; }
+    #recipePanel { order: 5; }
     #recipePanel {
         width: 100%;
         max-width: 1000px;
@@ -1367,6 +1372,80 @@ body { overscroll-behavior: none; }
 @media (max-width: 768px) {
     .leaderboard-box { width: 95vw; padding: 16px; }
 }
+
+/* === DPS Panel === */
+#dpsPanel {
+    width: 180px;
+    background: #0a0a2e;
+    border: 2px solid #00ffff;
+    border-right: none;
+    box-shadow: 0 0 15px rgba(0,255,255,0.2);
+    padding: 8px;
+    font-size: 11px;
+    color: #ccc;
+    height: 620px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    scrollbar-width: thin;
+    scrollbar-color: #00ffff44 #0a0a2e;
+}
+#dpsPanel::-webkit-scrollbar { width: 5px; }
+#dpsPanel::-webkit-scrollbar-track { background: #0a0a2e; }
+#dpsPanel::-webkit-scrollbar-thumb { background: #00ffff44; border-radius: 3px; }
+#dpsPanel h3 {
+    color: #00ffff;
+    text-shadow: 0 0 10px rgba(0,255,255,0.5);
+    font-size: 13px;
+    text-align: center;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #00ffff44;
+    padding-bottom: 6px;
+}
+.dps-row { margin: 4px 0; padding: 3px; border-left: 2px solid transparent; }
+.dps-row:first-child { border-left-color: #ffdd00; }
+.dps-rank { color: #888; font-size: 10px; }
+.dps-name { font-size: 11px; }
+.dps-bar-bg { height: 4px; background: #1a1a3e; border-radius: 2px; margin: 2px 0; }
+.dps-bar { height: 100%; border-radius: 2px; transition: width 0.3s; }
+.dps-value { color: #888; font-size: 9px; }
+.dps-total { margin-top: 8px; padding-top: 6px; border-top: 1px solid #2a2a6e; color: #ffdd00; font-size: 11px; }
+#dpsPanelToggle {
+    display: none;
+    background: #1a1a4e;
+    color: #00ffff;
+    border: 2px solid #00ffff;
+    padding: 8px 16px;
+    font-family: 'Press Start 2P', 'DungGeunMo', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    margin-top: 6px;
+    width: 100%;
+    max-width: 1000px;
+    text-align: center;
+}
+#dpsPanelToggle:hover { background: #2a2a6e; }
+
+/* Mobile: DPS panel below canvas */
+@media (max-width: 1300px) {
+    #dpsPanel {
+        width: 100%;
+        max-width: 1000px;
+        height: auto;
+        max-height: 160px;
+        overflow-y: auto;
+        border-right: 2px solid #00ffff;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        order: 3;
+    }
+    #dpsPanel h3 {
+        width: 100%;
+    }
+    #dpsPanelToggle { display: block; order: 2; }
+    #dpsPanel.collapsed { display: none; }
+    .dps-row { flex: 1 1 45%; min-width: 140px; }
+}
 </style>
 </head>
 <body>
@@ -1557,7 +1636,12 @@ body { overscroll-behavior: none; }
 <!-- ====== GAME AREA (hidden until game starts) ====== -->
 <div id="gameArea" style="display:none">
 <div id="gameRow">
+<div id="dpsPanel">
+    <h3>&#x2694; 데미지 기여도</h3>
+    <div id="dpsContent"></div>
+</div>
 <canvas id="gameCanvas" width="1000" height="620"></canvas>
+<button id="dpsPanelToggle" onclick="toggleDPSPanel()">&#x2694; 데미지 기여도 ▼</button>
 <button id="recipePanelToggle" onclick="toggleRecipePanel()">&#x2726; 조합/시너지 패널 ▼</button>
 <div id="recipePanel">
     <h3>&#x2726; 히든 조합 &#x2726;</h3>
@@ -2678,6 +2762,109 @@ function hostStartGame() {
     startMultiplayerGame();
 }
 
+// ── DPS Tracking System ──
+function trackTowerDamage(towerGridX, towerGridY, damage) {
+    let key = towerGridX + ',' + towerGridY;
+    let t = grid[towerGridX] && grid[towerGridX][towerGridY];
+    if (!t) {
+        // Tower might have been sold/merged but projectile still in flight
+        if (towerDamageStats[key]) {
+            towerDamageStats[key].totalDmg += damage;
+        }
+        return;
+    }
+    if (!towerDamageStats[key]) {
+        towerDamageStats[key] = {
+            type: t.type,
+            name: t.def.name,
+            grade: t.grade,
+            level: t.level || 1,
+            totalDmg: 0,
+            color: t.def.color
+        };
+    }
+    towerDamageStats[key].totalDmg += damage;
+    // Update current tower info (grade/level may have changed)
+    towerDamageStats[key].grade = t.grade;
+    towerDamageStats[key].level = t.level || 1;
+    towerDamageStats[key].name = t.def.name;
+    towerDamageStats[key].type = t.type;
+    towerDamageStats[key].color = t.def.color;
+}
+
+function formatDPSNumber(n) {
+    if (n >= 1000000) return (n/1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n/1000).toFixed(1) + 'K';
+    return Math.round(n).toString();
+}
+
+function getTotalDamage() {
+    let total = 0;
+    for (let key in towerDamageStats) total += towerDamageStats[key].totalDmg;
+    return total || 1;
+}
+
+function updateDPSPanel() {
+    let el = document.getElementById('dpsContent');
+    if (!el) return;
+    let entries = Object.entries(towerDamageStats);
+    entries.sort(function(a, b) { return b[1].totalDmg - a[1].totalDmg; });
+
+    let html = '';
+    let maxDmg = entries.length > 0 ? entries[0][1].totalDmg : 1;
+    let totalDmg = getTotalDamage();
+
+    for (let i = 0; i < Math.min(entries.length, 10); i++) {
+        let kv = entries[i];
+        let key = kv[0];
+        let data = kv[1];
+        let pct = Math.round(data.totalDmg / totalDmg * 100);
+        let barWidth = Math.round(data.totalDmg / maxDmg * 100);
+
+        html += '<div class="dps-row">';
+        html += '<div class="dps-rank">#' + (i+1) + '</div>';
+        html += '<div class="dps-info">';
+        html += '<span class="dps-name" style="color:' + data.color + '">' + data.name + ' \u2605' + data.grade + '</span>';
+        html += '<div class="dps-bar-bg"><div class="dps-bar" style="width:' + barWidth + '%;background:' + data.color + '"></div></div>';
+        html += '<span class="dps-value">' + formatDPSNumber(data.totalDmg) + ' (' + pct + '%)</span>';
+        html += '</div></div>';
+    }
+
+    html += '<div class="dps-total">\uCD1D \uB370\uBBF8\uC9C0: ' + formatDPSNumber(getTotalDamage()) + '</div>';
+    el.innerHTML = html;
+}
+
+function removeDPSEntry(gx, gy) {
+    let key = gx + ',' + gy;
+    delete towerDamageStats[key];
+}
+
+function transferDPSEntry(fromX, fromY, toX, toY) {
+    let fromKey = fromX + ',' + fromY;
+    let toKey = toX + ',' + toY;
+    if (towerDamageStats[fromKey]) {
+        let oldDmg = towerDamageStats[fromKey].totalDmg;
+        if (towerDamageStats[toKey]) {
+            towerDamageStats[toKey].totalDmg += oldDmg;
+        } else {
+            towerDamageStats[toKey] = Object.assign({}, towerDamageStats[fromKey]);
+        }
+        delete towerDamageStats[fromKey];
+    }
+}
+
+function toggleDPSPanel() {
+    let panel = document.getElementById('dpsPanel');
+    let btn = document.getElementById('dpsPanelToggle');
+    if (panel.classList.contains('collapsed')) {
+        panel.classList.remove('collapsed');
+        btn.innerHTML = '&#x2694; \uB370\uBBF8\uC9C0 \uAE30\uC5EC\uB3C4 &#x25B2;';
+    } else {
+        panel.classList.add('collapsed');
+        btn.innerHTML = '&#x2694; \uB370\uBBF8\uC9C0 \uAE30\uC5EC\uB3C4 &#x25BC;';
+    }
+}
+
 // For multiplayer stage support - host selects stage and sends to guest
 // For now, multiplayer uses legacy infinite mode (no stage select)
 // Stage mode is solo-only for simplicity
@@ -2757,6 +2944,8 @@ function resetGameState() {
     overflowTimer = 0;
     wavePhaseSpawnTimer = 0;
     wavePhaseSpawnRate = 1.0;
+    towerDamageStats = {};
+    dpsUpdateTimer = 0;
 }
 
 // === MULTIPLAYER SYNC ===
@@ -3117,10 +3306,143 @@ function drawPixelArt(ctx, pixels, x, y, pixelSize, color) {
                 ctx.fillStyle = color;
             } else if (val === 2) {
                 ctx.fillStyle = 'rgb(' + darkR + ',' + darkG + ',' + darkB + ')';
+            } else if (val === 3) {
+                ctx.fillStyle = '#ffffff';
             }
             ctx.fillRect(startX + px * pixelSize, startY + py * pixelSize, pixelSize, pixelSize);
         }
     }
+}
+
+// ── Animated Sprite System ──
+function shiftRow(row, amount) {
+    let newRow = new Array(row.length).fill(0);
+    for (let i = 0; i < row.length; i++) {
+        let ni = (i + amount) % row.length;
+        if (ni < 0) ni += row.length;
+        newRow[ni] = row[i];
+    }
+    return newRow;
+}
+
+function getAnimatedFrame(basePixels, frameIndex, type) {
+    if (frameIndex === 0) return basePixels;
+    let shifted = basePixels.map(function(row) { return row.slice(); });
+    if (frameIndex === 1) {
+        // Idle animation frame
+        switch(type) {
+            case 'archer':
+            case 'shingoong':
+                // Shift bow arm row
+                if (shifted[4]) shifted[4] = shiftRow(shifted[4], 1);
+                break;
+            case 'blade':
+            case 'noishin':
+                // Flash sword pixels to white
+                for (let yy = 0; yy < shifted.length; yy++)
+                    for (let xx = 0; xx < shifted[yy].length; xx++)
+                        if (shifted[yy][xx] === 2 && ((yy + xx) % 3 === 0)) shifted[yy][xx] = 3;
+                break;
+            case 'gunner':
+            case 'geumgang':
+                // Slight barrel shift
+                if (shifted[3]) shifted[3] = shiftRow(shifted[3], 1);
+                break;
+            case 'mage':
+            case 'yuryeong':
+                // Shift top hat/staff
+                if (shifted[0]) shifted[0] = shiftRow(shifted[0], 1);
+                if (shifted[1]) shifted[1] = shiftRow(shifted[1], 1);
+                break;
+            case 'lightning':
+                // Shift bolt segments
+                if (shifted[2]) shifted[2] = shiftRow(shifted[2], 1);
+                if (shifted[5]) shifted[5] = shiftRow(shifted[5], -1);
+                break;
+            case 'cannon':
+                // Shift barrel slightly up
+                if (shifted[0]) shifted[0] = shiftRow(shifted[0], 1);
+                break;
+            case 'frost':
+            case 'bingpok':
+                // Rotate crystal tips
+                if (shifted[1]) shifted[1] = shiftRow(shifted[1], 1);
+                if (shifted[5]) shifted[5] = shiftRow(shifted[5], -1);
+                break;
+            case 'mine':
+                // Pulse inner gems
+                for (let yy = 2; yy < 5; yy++)
+                    for (let xx = 2; xx < 6; xx++)
+                        if (shifted[yy] && shifted[yy][xx] === 1) shifted[yy][xx] = 3;
+                break;
+            case 'dragon':
+            case 'hwaryong':
+                // Wing flap - shift wing rows
+                if (shifted[1]) shifted[1] = shiftRow(shifted[1], 1);
+                if (shifted[2]) shifted[2] = shiftRow(shifted[2], -1);
+                break;
+        }
+    } else if (frameIndex === 2) {
+        // Attack frame
+        switch(type) {
+            case 'archer':
+            case 'shingoong':
+                // Bow pulled back and release - shift arm rows
+                if (shifted[4]) shifted[4] = shiftRow(shifted[4], -1);
+                if (shifted[5]) shifted[5] = shiftRow(shifted[5], -1);
+                break;
+            case 'blade':
+            case 'noishin':
+                // All sword pixels flash bright white
+                for (let yy = 0; yy < shifted.length; yy++)
+                    for (let xx = 0; xx < shifted[yy].length; xx++)
+                        if (shifted[yy][xx] === 2) shifted[yy][xx] = 3;
+                break;
+            case 'gunner':
+            case 'geumgang':
+                // Recoil - shift barrel back
+                if (shifted[2]) shifted[2] = shiftRow(shifted[2], -1);
+                if (shifted[3]) shifted[3] = shiftRow(shifted[3], -1);
+                break;
+            case 'mage':
+            case 'yuryeong':
+                // Staff glow - flash to white
+                for (let yy = 0; yy < 3; yy++)
+                    for (let xx = 0; xx < shifted[yy].length; xx++)
+                        if (shifted[yy][xx] === 1) shifted[yy][xx] = 3;
+                break;
+            case 'lightning':
+                // Full bolt flash
+                for (let yy = 0; yy < shifted.length; yy++)
+                    for (let xx = 0; xx < shifted[yy].length; xx++)
+                        if (shifted[yy][xx] !== 0) shifted[yy][xx] = 3;
+                break;
+            case 'cannon':
+                // Recoil shift down
+                if (shifted[5]) shifted[5] = shiftRow(shifted[5], 1);
+                if (shifted[6]) shifted[6] = shiftRow(shifted[6], 1);
+                break;
+            case 'frost':
+            case 'bingpok':
+                // Frost burst - inner pixels flash
+                for (let yy = 2; yy < 5; yy++)
+                    for (let xx = 2; xx < 6; xx++)
+                        if (shifted[yy] && shifted[yy][xx] !== 0) shifted[yy][xx] = 3;
+                break;
+            case 'mine':
+                // Coin flip
+                if (shifted[1]) shifted[1] = shiftRow(shifted[1], 1);
+                break;
+            case 'dragon':
+            case 'hwaryong':
+                // Fire breath - bottom rows flash bright
+                for (let yy = 5; yy < shifted.length; yy++)
+                    for (let xx = 0; xx < shifted[yy].length; xx++)
+                        if (shifted[yy][xx] !== 0) shifted[yy][xx] = 3;
+                break;
+        }
+    }
+    return shifted;
 }
 
 // ── Game State ──
@@ -3130,6 +3452,8 @@ let projectiles = [];
 let particles = [];
 let damageNumbers = [];
 let screenTransition = { active: false, alpha: 0, callback: null, phase: null };
+let towerDamageStats = {}; // { "x,y": { type, name, grade, level, totalDmg, color }, ... }
+let dpsUpdateTimer = 0;
 let sp = 100;
 let hp = 5;
 let wave = 0;
@@ -3305,6 +3629,7 @@ function moveTower(fromX, fromY, toX, toY, playerRole) {
     if (!canPlayerPlaceInCell(playerRole, fromX, fromY)) return false; // 남의 타워도 못 움직임
     grid[toX][toY] = t;
     grid[fromX][fromY] = null;
+    transferDPSEntry(fromX, fromY, toX, toY);
     spawnParticle(gridToWorld(toX, toY), '#ffffff', 5);
     updateRecipePanel();
     return true;
@@ -3323,6 +3648,7 @@ function sellTower(gx, gy, playerRole) {
     spawnParticle(gridToWorld(gx, gy), '#ffff00', 10);
     showToast(t.def.name + ' 판매! +' + refund + ' 에너지', 1200);
     grid[gx][gy] = null;
+    removeDPSEntry(gx, gy);
     if (selectedCell && selectedCell.x === gx && selectedCell.y === gy) selectedCell = null;
     if (typeof updateRecipePanel === 'function') updateRecipePanel();
     return true;
@@ -3384,6 +3710,14 @@ function swapTowers(fromX, fromY, toX, toY, playerRole) {
     playerRole = playerRole || 'P1';
     if (!canPlayerPlaceInCell(playerRole, fromX, fromY)) return false;
     if (!canPlayerPlaceInCell(playerRole, toX, toY)) return false;
+    // Swap DPS stats
+    let fromKey = fromX + ',' + fromY;
+    let toKey = toX + ',' + toY;
+    let tmpDPS = towerDamageStats[fromKey];
+    towerDamageStats[fromKey] = towerDamageStats[toKey];
+    towerDamageStats[toKey] = tmpDPS;
+    if (!towerDamageStats[fromKey]) delete towerDamageStats[fromKey];
+    if (!towerDamageStats[toKey]) delete towerDamageStats[toKey];
     grid[fromX][fromY] = b;
     grid[toX][toY] = a;
     spawnParticle(gridToWorld(fromX, fromY), '#aaaaff', 4);
@@ -3414,6 +3748,7 @@ function doMergeForPlayer(fromX, fromY, toX, toY, playerRole) {
         let recipe = findHiddenRecipe(a.type, b.type);
         if (recipe) {
             let resultDef = TOWER_DEFS[recipe.result];
+            transferDPSEntry(fromX, fromY, toX, toY);
             grid[fromX][fromY] = null;
             grid[toX][toY] = {
                 type: recipe.result, grade: 4, level: 1, attackTimer: 0,
@@ -3443,6 +3778,7 @@ function doMergeForPlayer(fromX, fromY, toX, toY, playerRole) {
     // SAME TYPE - no random type change
     let newType = a.type;
     let newDef = TOWER_DEFS[newType];
+    transferDPSEntry(fromX, fromY, toX, toY);
     grid[toX][toY] = {
         type: newType, grade: newGrade, level: 1, attackTimer: 0,
         def: newDef,
@@ -3505,6 +3841,9 @@ function performHiddenCombo(recipeIdx, playerRole) {
     if (!posA) return;
     let posB = findTowerOnGrid(recipe.b, 3, playerRole, posA);
     if (!posB) return;
+
+    // Transfer DPS stats from both towers to the new position
+    transferDPSEntry(posB.x, posB.y, posA.x, posA.y);
 
     // Remove both towers
     grid[posA.x][posA.y] = null;
@@ -3805,7 +4144,7 @@ function spawnParticle(pos, color, count) {
 // ── Projectiles ──
 let lightningFlashes = [];
 
-function spawnProjectile(from, to, dmg, color, splash, splashR, towerType, isHiddenTower) {
+function spawnProjectile(from, to, dmg, color, splash, splashR, towerType, isHiddenTower, towerGridPos) {
     // Lightning: instant flash, no traveling projectile
     if (towerType === 'lightning' || towerType === 'noishin') {
         lightningFlashes.push({
@@ -3822,6 +4161,7 @@ function spawnProjectile(from, to, dmg, color, splash, splashR, towerType, isHid
                     let actualDmg = dmg * (e.curseMulti || 1.0);
                     e.hp -= actualDmg;
                     spawnDamageNumber(e.x, e.y, actualDmg, isHiddenTower);
+                    if (towerGridPos) trackTowerDamage(towerGridPos.x, towerGridPos.y, actualDmg);
                 }
             }
             spawnParticle({x:to.x, y:to.y}, color, 8);
@@ -3835,6 +4175,7 @@ function spawnProjectile(from, to, dmg, color, splash, splashR, towerType, isHid
                 let actualDmg = dmg * (hit.curseMulti || 1.0);
                 hit.hp -= actualDmg;
                 spawnDamageNumber(hit.x, hit.y, actualDmg, isHiddenTower);
+                if (towerGridPos) trackTowerDamage(towerGridPos.x, towerGridPos.y, actualDmg);
             }
         }
         // Spawn electric spark particles
@@ -3857,7 +4198,8 @@ function spawnProjectile(from, to, dmg, color, splash, splashR, towerType, isHid
         dmg: dmg, color: color, splash: splash, splashR: splashR || 0, isHiddenTower: isHiddenTower || false,
         speed: 500,
         towerType: towerType || 'default',
-        trail: []
+        trail: [],
+        towerPos: towerGridPos || null
     });
 }
 
@@ -3931,7 +4273,7 @@ function update(dt) {
                     let hiddenDmgBonus = getRelicBonus('hiddenDmg');
                     if (hiddenDmgBonus > 0) dmg *= (1 + hiddenDmgBonus);
                 }
-                spawnProjectile(tPos, {x:best.x, y:best.y}, dmg, t.def.color, t.def.splash, t.def.splashR, t.type, t.def.hidden);
+                spawnProjectile(tPos, {x:best.x, y:best.y}, dmg, t.def.color, t.def.splash, t.def.splashR, t.type, t.def.hidden, {x:x, y:y});
                 // Attack animation
                 t.attackAnim = 0.2;
                 if (t.def.effect === 'slow') {
@@ -3972,7 +4314,9 @@ function update(dt) {
                         }
                         if (nextBest) {
                             chained.push(nextBest);
-                            nextBest.hp -= dmg * 0.7;
+                            let chainDmg = dmg * 0.7;
+                            nextBest.hp -= chainDmg;
+                            trackTowerDamage(x, y, chainDmg);
                             spawnProjectile({x:lastTarget.x, y:lastTarget.y}, {x:nextBest.x, y:nextBest.y}, 0, t.def.color, false, 0);
                             lastTarget = nextBest;
                         }
@@ -3994,6 +4338,7 @@ function update(dt) {
                         if (Math.abs(a2 - angle) < 0.3) {
                             pierced.push(e2);
                             e2.hp -= dmg;
+                            trackTowerDamage(x, y, dmg);
                         }
                     }
                 }
@@ -4045,6 +4390,7 @@ function update(dt) {
                         let actualDmg = p.dmg * (e.curseMulti || 1.0);
                         e.hp -= actualDmg;
                         spawnDamageNumber(e.x, e.y, actualDmg, p.isHiddenTower);
+                        if (p.towerPos) trackTowerDamage(p.towerPos.x, p.towerPos.y, actualDmg);
                     }
                 }
                 spawnParticle({x:p.tx, y:p.ty}, p.color, 8);
@@ -4058,6 +4404,7 @@ function update(dt) {
                     let actualDmg = p.dmg * (hit.curseMulti || 1.0);
                     hit.hp -= actualDmg;
                     spawnDamageNumber(hit.x, hit.y, actualDmg, p.isHiddenTower);
+                    if (p.towerPos) trackTowerDamage(p.towerPos.x, p.towerPos.y, actualDmg);
                 }
             }
             projectiles.splice(i, 1);
@@ -4890,7 +5237,7 @@ function draw() {
         // Grade visual enhancement (glow, particles, border)
         drawGradeEnhancement(ctx, t, pos, pixelSize);
 
-        // Draw pixel art character
+        // Draw pixel art character with animation
         let pixelData = PIXEL_ART[t.type];
         // Attack animation offset
         let animOff = 0;
@@ -4898,7 +5245,15 @@ function draw() {
             animOff = Math.sin(t.attackAnim * Math.PI / 0.2) * 3;
         }
         if (pixelData) {
-            drawPixelArt(ctx, pixelData, pos.x, pos.y - 4 + (t.type === 'cannon' ? animOff : 0), pixelSize, t.def.color);
+            let idleFrameIdx = Math.floor(Date.now() / 400) % 2; // Alternate every 400ms
+            let isAttacking = t.attackAnim > 0;
+            let animFrame;
+            if (isAttacking) {
+                animFrame = getAnimatedFrame(pixelData, 2, t.type); // Attack frame
+            } else {
+                animFrame = getAnimatedFrame(pixelData, idleFrameIdx, t.type);
+            }
+            drawPixelArt(ctx, animFrame, pos.x, pos.y - 4 + (t.type === 'cannon' ? animOff : 0), pixelSize, t.def.color);
         } else {
             // Fallback: draw a simple shape
             ctx.fillStyle = t.def.color;
@@ -6171,6 +6526,13 @@ function gameLoop(time) {
     lastTime = time;
     update(dt);
     draw();
+
+    // DPS panel update (every 1 second)
+    dpsUpdateTimer += dt;
+    if (dpsUpdateTimer >= 1.0) {
+        dpsUpdateTimer = 0;
+        updateDPSPanel();
+    }
 
     // Hints
     checkHints();
