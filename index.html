@@ -5908,20 +5908,21 @@ function draw() {
         ctx.fillText(wave === 0 ? '\uC900\uBE44 \uC911' : '\uC6E8\uC774\uBE0C ' + wave + (waveActive ? ' \uD83D\uDD25' : ' \u2713'), canvas.width / 2 - 8, 26);
     }
 
-    // Energy bar (right side)
-    drawEnergyBar(canvas.width - 136, 14, sp);
+    // Energy bar (right side, top)
+    drawEnergyBar(canvas.width - 146, 8, sp);
 
-    // Gold display (stage mode)
+    // Gold display (below energy, with spacing)
     if (stageMode) {
         ctx.font = '12px DungGeunMo, Press Start 2P, monospace';
         ctx.fillStyle = '#ffdd00';
         ctx.textAlign = 'right';
-        ctx.fillText('\uD83D\uDCB0 ' + saveData.gold, canvas.width - 10, 46);
+        ctx.textBaseline = 'top';
+        ctx.fillText('\uD83D\uDCB0 ' + saveData.gold, canvas.width - 10, 30);
     }
 
-    // Enemy count bar (below energy bar when wave active)
+    // Enemy count bar (below gold, with spacing)
     if (waveActive) {
-        drawEnemyCountBar(canvas.width - 96, 32, enemies.length, OVERFLOW_LIMIT);
+        drawEnemyCountBar(canvas.width - 146, 48, enemies.length, OVERFLOW_LIMIT);
     }
 
     // Multiplayer player names in HUD
